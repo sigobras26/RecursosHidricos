@@ -11,7 +11,7 @@ var style_100LocenRiesgo_2 = function(feature, resolution){
     var zoomThresholdResolution = 0.00137329;
 
     var labelText = "";
-    var labelFont = "bold 11px sans-serif";
+    var labelFont = "bold 22px sans-serif";
     var labelFill = "#000000";
     var bufferColor = "#ffffff";
     var bufferWidth = 2;
