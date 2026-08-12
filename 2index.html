@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+<title>SIG — Secretaría de Recursos Hídricos</title>
+
+<!-- OpenLayers 9 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@9.2.4/ol.css">
+<script src="https://cdn.jsdelivr.net/npm/ol@9.2.4/dist/ol.js"></script>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+
+<style>
+/* ── TOKENS ── */
+:root {
+  --bg:          #0B2545;
+  --panel:       #0F2E55;
+  --panel-light: #163660;
+  --blue:        #2D7DD2;
+  --blue-soft:   rgba(45,125,210,0.18);
+  --accent:      #C44B2B;
+  --accent-soft: rgba(196,75,43,0.15);
+  --white:       #FFFFFF;
+  --t1:          #EEF3FB;
+  --t2:          rgba(200,220,248,0.55);
+  --border:      rgba(45,125,210,0.28);
+  --radius:      7px;
+  --header-h:    54px;
+  --footer-h:    40px;
+  --panel-w:     300px;
+  --font:        'Inter', system-ui, sans-serif;
+  --mono:        'DM Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); background:var(--bg); }
+
+/* ── HEADER ── */
+#header {
+  position:fixed; top:0; left:0; right:0;
+  height:var(--header-h);
+  background:linear-gradient(90deg,#071A36 0%,#0F2E55 100%);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center;
+  padding:0 16px; gap:12px;
+  z-index:9000;
+  box-shadow:0 2px 20px rgba(0,0,0,0.5);
+}
+.h-logo {
+  width:36px; height:36px; border-radius:50%; flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),#8B2A15);
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px;
+  box-shadow:0 0 0 2px rgba(196,75,43,0.35);
+}
+.h-text { display:flex; flex-direction:column; gap:1px; }
+.h-title { font-size:14px; font-weight:700; color:var(--white); }
+.h-sub   { font-size:10px; font-weight:500; color:var(--t2); text-transform:uppercase; letter-spacing:0.6px; }
+.h-badge {
+  margin-left:auto;
+  background:var(--accent-soft); border:1px solid rgba(196,75,43,0.4);
+  border-radius:20px; padding:3px 11px;
+  font-size:10px; font-weight:600; color:#E07A5F;
+  text-transform:uppercase; letter-spacing:0.5px;
+}
+
+/* ── LAYOUT ── */
+#map {
+  position:fixed;
+  top:var(--header-h); bottom:var(--footer-h);
+  left:var(--panel-w); right:0;
+  transition:left 0.28s cubic-bezier(.4,0,.2,1);
+}
+#map.full { left:0; }
+
+/* ── SIDEBAR ── */
+#sidebar {
+  position:fixed;
+  top:var(--header-h); bottom:var(--footer-h);
+  left:0; width:var(--panel-w);
+  background:var(--panel);
+  border-right:1px solid var(--border);
+  z-index:8000;
+  display:flex; flex-direction:column;
+  overflow:hidden;
+  box-shadow:2px 0 16px rgba(0,0,0,0.3);
+  transition:transform 0.28s cubic-bezier(.4,0,.2,1);
+}
+#sidebar.collapsed { transform:translateX(calc(-1 * var(--panel-w))); }
+
+/* toggle */
+#sidebar-toggle {
+  position:fixed;
+  top:calc(var(--header-h) + 12px);
+  left:calc(var(--panel-w) + 8px);
+  z-index:8500;
+  width:28px; height:28px;
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:var(--radius); cursor:pointer;
+  color:var(--t1); font-size:13px;
+  display:flex; align-items:center; justify-content:center;
+  transition:left 0.28s cubic-bezier(.4,0,.2,1), background 0.15s;
+}
+#sidebar-toggle:hover { background:var(--panel-light); }
+#sidebar-toggle.closed { left:8px; }
+
+/* ── SIDEBAR SECTIONS ── */
+.s-section { border-bottom:1px solid var(--border); padding:12px 14px; }
+.s-label {
+  font-size:9px; font-weight:700; text-transform:uppercase;
+  letter-spacing:0.9px; color:var(--t2); margin-bottom:8px;
+}
+
+/* Search */
+#search-wrap { position:relative; }
+#search-input {
+  width:100%; padding:8px 10px 8px 30px;
+  background:rgba(255,255,255,0.06);
+  border:1px solid var(--border); border-radius:var(--radius);
+  color:var(--t1); font-family:var(--font); font-size:13px;
+  outline:none; transition:border-color 0.15s;
+}
+#search-input:focus { border-color:var(--blue); }
+#search-input::placeholder { color:var(--t2); }
+.s-icon {
+  position:absolute; left:9px; top:50%; transform:translateY(-50%);
+  color:var(--t2); pointer-events:none; font-size:13px;
+}
+#search-results {
+  margin-top:6px; display:flex; flex-direction:column; gap:3px;
+  max-height:160px; overflow-y:auto;
+}
+.sr-item {
+  padding:7px 10px; border-radius:5px;
+  background:rgba(255,255,255,0.04); border:1px solid transparent;
+  color:var(--t1); font-size:12px; cursor:pointer;
+  transition:background 0.12s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.sr-item:hover { background:var(--blue-soft); border-color:var(--border); }
+.sr-empty { color:var(--t2); font-size:12px; padding:4px 2px; }
+
+/* Tools */
+.tool-btn {
+  width:100%; display:flex; align-items:center; gap:9px;
+  padding:9px 10px; border-radius:var(--radius);
+  background:rgba(255,255,255,0.04); border:1px solid transparent;
+  color:var(--t1); font-family:var(--font); font-size:13px;
+  cursor:pointer; transition:background 0.15s;
+  text-align:left; margin-bottom:5px;
+}
+.tool-btn:last-child { margin-bottom:0; }
+.tool-btn:hover { background:var(--blue-soft); border-color:var(--border); }
+.tool-btn.active { background:var(--blue-soft); border-color:var(--blue); color:#7EC8F7; }
+#measure-result {
+  margin-top:8px; padding:8px 10px;
+  background:rgba(0,0,0,0.25); border-radius:var(--radius);
+  border-left:3px solid var(--accent);
+  font-family:var(--mono); font-size:13px; color:var(--t1);
+  display:none;
+}
+
+/* Layer tree */
+.s-layers { flex:1; overflow-y:auto; padding:12px 14px; }
+.layer-group { margin-bottom:10px; }
+.layer-group-title {
+  font-size:11px; font-weight:600; color:var(--t2);
+  text-transform:uppercase; letter-spacing:0.4px;
+  padding:4px 0; margin-bottom:4px;
+  border-bottom:1px solid rgba(255,255,255,0.07);
+}
+.layer-item {
+  display:flex; align-items:center; gap:8px;
+  padding:5px 2px; cursor:pointer;
+}
+.layer-item label { font-size:12px; color:var(--t1); cursor:pointer; flex:1; line-height:1.3; }
+.layer-item input[type=checkbox] { accent-color:var(--blue); flex-shrink:0; cursor:pointer; }
+
+/* ── POPUP ── */
+.ol-popup {
+  position:absolute;
+  background:rgba(11,37,69,0.93);
+  backdrop-filter:blur(12px);
+  border:1px solid rgba(45,125,210,0.45);
+  border-radius:8px;
+  padding:12px 14px 10px;
+  min-width:200px; max-width:280px;
+  box-shadow:0 8px 28px rgba(0,0,0,0.5);
+  color:var(--t1); font-family:var(--font); font-size:13px;
+  pointer-events:auto;
+}
+.ol-popup table { width:100%; border-collapse:collapse; }
+.ol-popup th {
+  color:var(--t2); font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:0.5px;
+  padding:3px 0; text-align:left;
+}
+.ol-popup td { color:var(--t1); font-size:13px; padding:1px 0 6px; }
+.ol-popup-closer {
+  position:absolute; top:8px; right:10px;
+  color:var(--t2); text-decoration:none; font-size:15px;
+  transition:color 0.15s;
+}
+.ol-popup-closer:hover { color:var(--t1); }
+.ol-popup-closer::after { content:'✕'; }
+
+/* ── OL CONTROLS ── */
+.ol-control { background:transparent !important; padding:0 !important; }
+.ol-control button {
+  background:var(--panel) !important;
+  color:var(--t1) !important;
+  border:1px solid var(--border) !important;
+  border-radius:var(--radius) !important;
+  width:30px !important; height:30px !important;
+  font-size:16px !important;
+  transition:background 0.15s !important;
+}
+.ol-control button:hover { background:var(--panel-light) !important; }
+.ol-zoom { display:flex !important; flex-direction:column !important; gap:4px !important; }
+.ol-attribution {
+  background:rgba(11,37,69,0.8) !important;
+  border-radius:var(--radius) !important;
+  border:1px solid var(--border) !important;
+  font-size:10px !important;
+}
+.ol-attribution a { color:var(--blue) !important; }
+.ol-scale-line { background:rgba(11,37,69,0.7) !important; border-radius:4px !important; padding:2px 6px !important; }
+.ol-scale-line-inner { border-color:var(--t2) !important; color:var(--t2) !important; font-size:10px !important; }
+
+/* Measure tooltip */
+.mtooltip {
+  background:rgba(11,37,69,0.9);
+  border:1px solid var(--blue);
+  border-radius:5px; padding:4px 8px;
+  color:var(--t1); font-family:var(--mono); font-size:12px;
+  white-space:nowrap; pointer-events:none;
+}
+.mtooltip.final { background:rgba(196,75,43,0.85); border-color:var(--accent); }
+
+/* ── FOOTER ── */
+#footer {
+  position:fixed; bottom:0; left:0; right:0;
+  height:var(--footer-h);
+  background:#071A36; border-top:1px solid var(--border);
+  display:flex; align-items:center; padding:0 16px; gap:14px;
+  z-index:9000; font-size:11.5px; color:var(--t2);
+}
+.f-dot { width:6px; height:6px; background:var(--accent); border-radius:50%; flex-shrink:0; }
+.f-sep { width:1px; height:14px; background:var(--border); }
+.f-copy { margin-left:auto; font-family:var(--mono); font-size:10px; opacity:0.3; }
+#footer a { color:var(--blue); text-decoration:none; }
+#footer a:hover { color:var(--white); }
+
+/* scrollbar */
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(45,125,210,0.35); border-radius:3px; }
+
+@media (max-width:640px) {
+  :root { --panel-w:260px; }
+  .h-badge { display:none; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="h-logo">💧</div>
+  <div class="h-text">
+    <div class="h-title">Secretaría de Recursos Hídricos</div>
+    <div class="h-sub">Ministerio de Obras Públicas · Sistema de Información Geográfica</div>
+  </div>
+  <div class="h-badge">SIG 2026</div>
+</div>
+
+<!-- TOGGLE -->
+<button id="sidebar-toggle" title="Mostrar/ocultar panel">◀</button>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+
+  <div class="s-section">
+    <div class="s-label">🔍 Buscar Localidad en Riesgo</div>
+    <div id="search-wrap">
+      <span class="s-icon">⌕</span>
+      <input id="search-input" type="text" placeholder="Escribí una localidad...">
+    </div>
+    <div id="search-results"></div>
+  </div>
+
+  <div class="s-section">
+    <div class="s-label">📐 Herramientas de Medición</div>
+    <button class="tool-btn" id="btn-dist">
+      <span>📏</span><span>Medir Distancia (km)</span>
+    </button>
+    <button class="tool-btn" id="btn-area">
+      <span>⬡</span><span>Medir Área (m²)</span>
+    </button>
+    <button class="tool-btn" id="btn-clear">
+      <span>✕</span><span>Limpiar medición</span>
+    </button>
+    <div id="measure-result"></div>
+  </div>
+
+  <div class="s-layers">
+    <div class="s-label">🗂 Capas</div>
+    <div id="layer-tree"></div>
+  </div>
+
+</div>
+
+<!-- MAPA -->
+<div id="map">
+  <div id="popup" class="ol-popup" style="display:none;">
+    <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+    <div id="popup-content"></div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div id="footer">
+  <div class="f-dot"></div>
+  Desarrollado por <strong style="color:var(--t1)">Crudo Nicolás</strong>
+  <div class="f-sep"></div>
+  <a href="mailto:sig.obras24@gmail.com">sig.obras24@gmail.com</a>
+  <div class="f-copy">© 2026 Ministerio de Obras Públicas</div>
+</div>
+
+<!-- ═══════════════ FUNCIONES AUXILIARES (de QGIS2web) ═══════════════ -->
+<!-- createTextStyle() y stripe() las usan los archivos styles/*.js -->
+<script>
+var createTextStyle = function(feature, resolution, labelText, labelFont,
+                               labelFill, placement, bufferColor,
+                               bufferWidth) {
+
+    if (feature.hide || !labelText) {
+        return;
+    }
+
+    var bufferStyle = null;
+    if (bufferWidth != 0) {
+        bufferStyle = new ol.style.Stroke({
+            color: bufferColor,
+            width: bufferWidth
+        });
+    }
+
+    var textStyle = new ol.style.Text({
+        font: labelFont,
+        text: labelText,
+        textBaseline: "middle",
+        textAlign: "left",
+        offsetX: 8,
+        offsetY: 3,
+        placement: placement,
+        maxAngle: 0,
+        fill: new ol.style.Fill({
+          color: labelFill
+        }),
+        stroke: bufferStyle
+    });
+
+    return textStyle;
+};
+
+function stripe(stripeWidth, gapWidth, angle, color) {
+    var canvas = document.createElement('canvas');
+    var context = canvas.getContext('2d');
+    canvas.width = screen.width;
+    canvas.height = stripeWidth + gapWidth;
+    context.fillStyle = color;
+    context.lineWidth = stripeWidth;
+    context.fillRect(0, 0, canvas.width, stripeWidth);
+    var innerPattern = context.createPattern(canvas, 'repeat');
+
+    var outerCanvas = document.createElement('canvas');
+    var outerContext = outerCanvas.getContext('2d');
+    outerCanvas.width = screen.width;
+    outerCanvas.height = screen.height;
+    outerContext.rotate((Math.PI / 180) * angle);
+    outerContext.translate(-(screen.width/2), -(screen.height/2));
+    outerContext.fillStyle = innerPattern;
+    outerContext.fillRect(0,0,screen.width,screen.height);
+
+    return outerContext.createPattern(outerCanvas, 'no-repeat');
+}
+</script>
+
+<!-- ═══════════════ EXPRESIONES QGIS (fnc_*) ═══════════════ -->
+<!-- Algunos estilos usan expresiones de campo (fnc_concat, fnc_round, etc.) -->
+<script src="resources/qgis2web_expressions.js"></script>
+
+<!-- ═══════════════ ESTILOS DE CAPAS ═══════════════ -->
+<!-- Deben cargarse ANTES que layers.js porque layers.js los usa -->
+<script src="styles/DepartamentosSTAFE_1_style.js"></script>
+<script src="styles/100LocenRiesgo_2_style.js"></script>
+<script src="styles/Cue_Reg_style.js"></script>
+<script src="styles/Canales_troncales_style.js"></script>
+<script src="styles/Li_Troncales_style.js"></script>
+<script src="styles/Areas_20_style.js"></script>
+<script src="styles/Linea_style.js"></script>
+<script src="styles/Punto_style.js"></script>
+
+<!-- ═══════════════ CAPAS + layersList ═══════════════ -->
+<script src="layers/layers.js"></script>
+
+<!-- ═══════════════ LÓGICA DEL MAPA ═══════════════ -->
+<script>
+'use strict';
+
+// ── MAPA ──────────────────────────────────────────────────────────────────────
+var map = new ol.Map({
+  target: 'map',
+  layers: layersList,
+  view: new ol.View({
+    center: ol.proj.fromLonLat([-60.7, -31.0]),  // Santa Fe, Argentina
+    zoom: 7,
+    minZoom: 5,
+    maxZoom: 20,
+    constrainResolution: true
+  }),
+  controls: ol.control.defaults.defaults().extend([
+    new ol.control.ScaleLine({ units: 'metric' })
+  ])
+});
+
+// ── SIDEBAR TOGGLE ────────────────────────────────────────────────────────────
+var sidebarEl = document.getElementById('sidebar');
+var mapEl     = document.getElementById('map');
+var toggleBtn = document.getElementById('sidebar-toggle');
+var panelOpen = true;
+
+toggleBtn.addEventListener('click', function () {
+  panelOpen = !panelOpen;
+  sidebarEl.classList.toggle('collapsed', !panelOpen);
+  mapEl.classList.toggle('full', !panelOpen);
+  toggleBtn.classList.toggle('closed', !panelOpen);
+  toggleBtn.textContent = panelOpen ? '◀' : '▶';
+  setTimeout(function () { map.updateSize(); }, 300);
+});
+
+// ── POPUP ─────────────────────────────────────────────────────────────────────
+var popupEl      = document.getElementById('popup');
+var popupContent = document.getElementById('popup-content');
+var popupCloser  = document.getElementById('popup-closer');
+
+var overlay = new ol.Overlay({
+  element: popupEl,
+  autoPan: { animation: { duration: 250 } }
+});
+map.addOverlay(overlay);
+
+popupCloser.onclick = function () {
+  popupEl.style.display = 'none';
+  overlay.setPosition(undefined);
+  return false;
+};
+
+function showPopup(feature, layer, coord) {
+  var aliases = layer.get('fieldAliases') || {};
+  var labels  = layer.get('fieldLabels')  || {};
+  var images  = layer.get('fieldImages')  || {};
+
+  var keys = feature.getKeys().filter(function (k) {
+    return k !== 'geometry'
+      && images[k] !== 'Hidden'
+      && labels[k] !== 'hidden field'
+      && labels[k] !== 'no label';
+  });
+
+  if (!keys.length) return;
+
+  var html = '<table>';
+  keys.forEach(function (k) {
+    var val = feature.get(k);
+    if (val == null || val === '') return;
+    html += '<tr><th>' + (aliases[k] || k) + '</th></tr>'
+          + '<tr><td>' + String(val) + '</td></tr>';
+  });
+  html += '</table>';
+
+  popupContent.innerHTML   = html;
+  popupEl.style.display    = 'block';
+  overlay.setPosition(coord);
+}
+
+map.on('singleclick', function (evt) {
+  if (activeDraw) return;
+  var found = false;
+  map.forEachFeatureAtPixel(evt.pixel, function (feature, layer) {
+    if (found || !layer || !layer.get('interactive')) return;
+    showPopup(feature, layer, evt.coordinate);
+    found = true;
+  }, { hitTolerance: 6 });
+
+  if (!found) {
+    popupEl.style.display = 'none';
+    overlay.setPosition(undefined);
+  }
+});
+
+map.on('pointermove', function (evt) {
+  if (activeDraw) { map.getViewport().style.cursor = 'crosshair'; return; }
+  var hit = map.hasFeatureAtPixel(evt.pixel, {
+    hitTolerance: 6,
+    layerFilter: function (l) { return l && l.get('interactive'); }
+  });
+  map.getViewport().style.cursor = hit ? 'pointer' : '';
+});
+
+// ── BUSCADOR ──────────────────────────────────────────────────────────────────
+var searchInput   = document.getElementById('search-input');
+var searchResults = document.getElementById('search-results');
+var searchCache   = [];
+
+// Indexar cuando la capa cargue
+lyr_100LocenRiesgo_2.getSource().on('featuresloadend', function () {
+  searchCache = lyr_100LocenRiesgo_2.getSource().getFeatures();
+});
+
+searchInput.addEventListener('input', function () {
+  var q = this.value.trim().toLowerCase();
+  searchResults.innerHTML = '';
+  if (!q) return;
+
+  var hits = searchCache.filter(function (f) {
+    return (f.get('Localidad') || '').toLowerCase().includes(q);
+  }).slice(0, 12);
+
+  if (!hits.length) {
+    searchResults.innerHTML = '<div class="sr-empty">Sin resultados</div>';
+    return;
+  }
+
+  hits.forEach(function (f) {
+    var name = f.get('Localidad') || '(sin nombre)';
+    var item = document.createElement('div');
+    item.className   = 'sr-item';
+    item.textContent = name;
+    item.addEventListener('click', function () {
+      var coord = ol.extent.getCenter(f.getGeometry().getExtent());
+      map.getView().animate({ center: coord, zoom: 12, duration: 700 });
+      lyr_100LocenRiesgo_2.setVisible(true);
+      showPopup(f, lyr_100LocenRiesgo_2, coord);
+      buildLayerTree();
+      searchResults.innerHTML = '';
+      searchInput.value = name;
+    });
+    searchResults.appendChild(item);
+  });
+});
+
+// ── MEDICIÓN ──────────────────────────────────────────────────────────────────
+var measureSource = new ol.source.Vector();
+var measureVLayer = new ol.layer.Vector({
+  source: measureSource,
+  style: new ol.style.Style({
+    fill:   new ol.style.Fill({ color: 'rgba(45,125,210,0.12)' }),
+    stroke: new ol.style.Stroke({ color: '#2D7DD2', width: 2, lineDash: [8, 5] }),
+    image:  new ol.style.Circle({
+      radius: 5,
+      stroke: new ol.style.Stroke({ color: '#2D7DD2', width: 2 }),
+      fill:   new ol.style.Fill({ color: 'rgba(45,125,210,0.5)' })
+    })
+  }),
+  displayInLayerSwitcher: false
+});
+map.addLayer(measureVLayer);
+
+var activeDraw     = null;
+var mTooltips      = [];
+var resultDiv      = document.getElementById('measure-result');
+var btnDist        = document.getElementById('btn-dist');
+var btnArea        = document.getElementById('btn-area');
+
+function clearMeasure() {
+  if (activeDraw) { map.removeInteraction(activeDraw); activeDraw = null; }
+  measureSource.clear();
+  mTooltips.forEach(function (o) { map.removeOverlay(o); });
+  mTooltips = [];
+  resultDiv.style.display = 'none';
+  btnDist.classList.remove('active');
+  btnArea.classList.remove('active');
+}
+
+function makeMoveTooltip() {
+  var el = document.createElement('div');
+  el.className = 'mtooltip';
+  var ov = new ol.Overlay({
+    element: el, offset: [0, -14],
+    positioning: 'bottom-center', stopEvent: false
+  });
+  map.addOverlay(ov);
+  mTooltips.push(ov);
+  return { el: el, ov: ov };
+}
+
+function makeFinalTooltip(text, coord) {
+  var el = document.createElement('div');
+  el.className   = 'mtooltip final';
+  el.textContent = text;
+  var ov = new ol.Overlay({
+    element: el, offset: [0, -10],
+    positioning: 'bottom-center', stopEvent: false
+  });
+  map.addOverlay(ov);
+  ov.setPosition(coord);
+  mTooltips.push(ov);
+}
+
+function startMeasure(type) {
+  clearMeasure();
+  (type === 'LineString' ? btnDist : btnArea).classList.add('active');
+
+  activeDraw = new ol.interaction.Draw({
+    source: measureSource,
+    type:   type,
+    style:  new ol.style.Style({
+      stroke: new ol.style.Stroke({ color: '#7EC8F7', width: 2, lineDash: [6, 4] }),
+      image:  new ol.style.Circle({
+        radius: 4,
+        stroke: new ol.style.Stroke({ color: '#7EC8F7', width: 2 }),
+        fill:   new ol.style.Fill({ color: 'rgba(126,200,247,0.4)' })
+      })
+    })
+  });
+  map.addInteraction(activeDraw);
+
+  var tip = makeMoveTooltip();
+
+  activeDraw.on('drawstart', function (e) {
+    e.feature.getGeometry().on('change', function (ce) {
+      var geom = ce.target;
+      var out, coord;
+      if (geom instanceof ol.geom.Polygon) {
+        out   = fmtArea(geom);
+        coord = geom.getInteriorPoint().getCoordinates();
+      } else {
+        out   = fmtLen(geom);
+        coord = geom.getLastCoordinate();
+      }
+      tip.el.textContent = out;
+      tip.ov.setPosition(coord);
+    });
+  });
+
+  activeDraw.on('drawend', function (e) {
+    var geom = e.feature.getGeometry();
+    var out  = geom instanceof ol.geom.Polygon ? fmtArea(geom) : fmtLen(geom);
+    var coord = geom instanceof ol.geom.Polygon
+      ? geom.getInteriorPoint().getCoordinates()
+      : geom.getLastCoordinate();
+
+    resultDiv.style.display = 'block';
+    resultDiv.textContent   = '📌 ' + out;
+    makeFinalTooltip(out, coord);
+
+    map.removeInteraction(activeDraw);
+    activeDraw = null;
+    btnDist.classList.remove('active');
+    btnArea.classList.remove('active');
+  });
+}
+
+function fmtLen(geom) {
+  var coords = geom.getCoordinates();
+  var proj   = map.getView().getProjection();
+  var len    = 0;
+  for (var i = 0; i < coords.length - 1; i++) {
+    len += ol.sphere.getDistance(
+      ol.proj.transform(coords[i],     proj, 'EPSG:4326'),
+      ol.proj.transform(coords[i + 1], proj, 'EPSG:4326')
+    );
+  }
+  return len >= 1000
+    ? (len / 1000).toFixed(3).replace('.', ',') + ' km'
+    : Math.round(len) + ' m';
+}
+
+function fmtArea(geom) {
+  var clone = geom.clone().transform(map.getView().getProjection(), 'EPSG:3857');
+  var area  = Math.abs(ol.sphere.getArea(clone));
+  return area >= 1000000
+    ? (area / 1000000).toFixed(4).replace('.', ',') + ' km²'
+    : Math.round(area).toLocaleString('es-AR') + ' m²';
+}
+
+btnDist.addEventListener('click', function () {
+  if (this.classList.contains('active')) { clearMeasure(); return; }
+  startMeasure('LineString');
+});
+btnArea.addEventListener('click', function () {
+  if (this.classList.contains('active')) { clearMeasure(); return; }
+  startMeasure('Polygon');
+});
+document.getElementById('btn-clear').addEventListener('click', clearMeasure);
+
+// ── ÁRBOL DE CAPAS ────────────────────────────────────────────────────────────
+function buildLayerTree() {
+  var tree = document.getElementById('layer-tree');
+  tree.innerHTML = '';
+  renderGroup(layersList.slice().reverse(), tree);
+}
+
+function renderGroup(layers, container) {
+  layers.forEach(function (item) {
+    if (item instanceof ol.layer.Group) {
+      var gDiv = document.createElement('div');
+      gDiv.className = 'layer-group';
+
+      var tDiv = document.createElement('div');
+      tDiv.className   = 'layer-group-title';
+      tDiv.textContent = item.get('title') || 'Grupo';
+      gDiv.appendChild(tDiv);
+
+      renderGroup(item.getLayers().getArray().slice().reverse(), gDiv);
+      container.appendChild(gDiv);
+    } else {
+      // Limpiar HTML del título (tiene imágenes de leyenda)
+      var rawTitle = (item.get('title') || 'Capa').replace(/<[^>]+>/g, '').trim().split('\n')[0];
+      if (rawTitle.length > 48) rawTitle = rawTitle.slice(0, 46) + '…';
+
+      var iDiv = document.createElement('div');
+      iDiv.className = 'layer-item';
+
+      var cb  = document.createElement('input');
+      cb.type    = 'checkbox';
+      cb.checked = item.getVisible();
+      cb.addEventListener('change', function () { item.setVisible(this.checked); });
+      item.on('change:visible', function () { cb.checked = item.getVisible(); });
+
+      var lbl = document.createElement('label');
+      lbl.textContent = rawTitle;
+      lbl.addEventListener('click', function () { cb.click(); });
+
+      iDiv.appendChild(cb);
+      iDiv.appendChild(lbl);
+      container.appendChild(iDiv);
+    }
+  });
+}
+
+buildLayerTree();
+</script>
+</body>
+</html>
