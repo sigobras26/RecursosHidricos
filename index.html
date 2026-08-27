@@ -3,441 +3,864 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+<meta name="theme-color" content="#05060D">
+<meta name="color-scheme" content="dark">
 <title>SIG — Secretaría de Recursos Hídricos</title>
 
 <!-- OpenLayers 9 -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@9.2.4/ol.css">
+<script src="https://cdn.jsdelivr.net/npm/proj4@2/dist/proj4.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/ol@9.2.4/dist/ol.js"></script>
 
 <!-- Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@500&family=Kedebideri&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600" rel="stylesheet">
 
 <style>
-/* ── TOKENS ── */
+/* ══════════════════════════════════════════════════════════════════════
+   TOKENS — paleta de agua sobria con tipografía ampliada
+   ══════════════════════════════════════════════════════════════════════ */
 :root {
-  --bg:          #0B2545;
-  --panel:       #0F2E55;
-  --panel-light: #163660;
-  --blue:        #2D7DD2;
-  --blue-soft:   rgba(45,125,210,0.18);
-  --accent:      #C44B2B;
-  --accent-soft: rgba(196,75,43,0.15);
-  --white:       #FFFFFF;
-  --t1:          #EEF3FB;
-  --t2:          rgba(200,220,248,0.55);
-  --border:      rgba(45,125,210,0.28);
-  --radius:      7px;
-  --header-h:    54px;
-  --footer-h:    40px;
-  --panel-w:     300px;
-  --layers-w:    300px;
-  --font:        'Kedebideri', sans-serif;
-  --mono:        'DM Mono', monospace;
+  --gap:          16px;
+  --header-h:     68px;
+  --footer-h:     48px;
+  --panel-w:      350px;
+  --layers-w:     330px;
+  --radius:       20px;
+  --radius-sm:    12px;
+  --radius-pill:  999px;
+
+  --abyss:        #05060D;
+  --abyss-2:      #0A0B18;
+  --panel:        rgba(13, 12, 26, 0.60);
+  --panel-solid:  #0D0C1C;
+  --panel-light:  rgba(255,255,255,0.055);
+
+  --current:      #22D3EE;   /* cian */
+  --current-2:    #38BDF8;
+  --violet:       #7C86D9;   /* índigo apagado */
+  --bio:          #14B8A6;   /* teal */
+  --flood:        #C97B52;   /* terracota */
+  --flood-soft:   rgba(201,123,82,0.16);
+
+  --holo:         linear-gradient(115deg, var(--current) 0%, var(--bio) 100%);
+
+  --blue:         var(--current);
+  --blue-soft:    rgba(34,211,238,0.14);
+  --accent:       var(--flood);
+  --accent-soft:  var(--flood-soft);
+
+  --white:        #FFFFFF;
+  --t1:           #EFF4FC;
+  --t2:           rgba(206,222,246,0.62);
+  --t3:           #fbfcfd;
+  --border:       rgba(34,211,238,0.24);
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font:         'Manrope', sans-serif;
+  --mono:         'JetBrains Mono', monospace;
+
+  --ease:         cubic-bezier(.4,0,.2,1);
+  --spring:       cubic-bezier(.34,1.56,.64,1);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); background:var(--bg); -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+html, body { width:100%; height:100%; overflow:hidden; font-family:var(--font); background:var(--abyss); color:var(--t1); -webkit-text-size-adjust:100%; text-size-adjust:100%; font-size:16px; }
+body { -webkit-font-smoothing:antialiased; }
+::selection { background:rgba(34,211,238,0.35); color:#fff; }
+button, input, select, a { font-family:var(--font); }
+button, a { -webkit-tap-highlight-color:transparent; }
+
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
+  outline:2px solid var(--current);
+  outline-offset:2px;
+  border-radius:6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:0.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.001ms !important;
+    scroll-behavior:auto !important;
+  }
+}
+
+/* ── FONDO AMBIENTE (aurora holográfica) ── */
+#aurora { position:fixed; inset:0; z-index:1; pointer-events:none; overflow:hidden; mix-blend-mode:screen; opacity:0.22; }
+#aurora span { position:absolute; border-radius:50%; filter:blur(90px); will-change:transform; }
+#aurora .a1 { width:52vw; height:52vw; max-width:640px; max-height:640px; background:var(--current); top:-14%; left:-12%; animation:auroraDrift 28s ease-in-out infinite; }
+#aurora .a2 { width:46vw; height:46vw; max-width:560px; max-height:560px; background:var(--bio); bottom:-16%; right:-8%; animation:auroraDrift 34s ease-in-out infinite reverse; }
+#aurora .a3 { width:36vw; height:36vw; max-width:440px; max-height:440px; background:var(--violet); top:38%; left:42%; animation:auroraDrift 24s ease-in-out infinite; }
+@keyframes auroraDrift {
+  0%   { transform:translate(0,0) scale(1); }
+  33%  { transform:translate(4%,-6%) scale(1.1); }
+  66%  { transform:translate(-4%,5%) scale(0.94); }
+  100% { transform:translate(0,0) scale(1); }
+}
+
+#grain {
+  position:fixed; inset:0; z-index:3; pointer-events:none; opacity:0.035; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/rect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── MAPA (full-bleed) ── */
+#map { position:fixed; inset:0; z-index:0; background:var(--abyss); transition:none; }
+#map.full { left:0; }
+.map-vignette {
+  position:fixed; inset:0; z-index:2; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 45%, transparent 45%, rgba(2,3,10,0.55) 100%);
+}
+
+#ripple-layer { position:fixed; inset:0; z-index:5; pointer-events:none; overflow:hidden; }
+.water-ripple {
+  position:absolute; width:18px; height:18px; margin-left:-9px; margin-top:-9px;
+  border-radius:50%; border:2px solid var(--current);
+  box-shadow:0 0 22px 3px rgba(34,211,238,0.55);
+  animation:rippleExpand 900ms cubic-bezier(.2,.6,.3,1) forwards;
+}
+.water-ripple::after {
+  content:''; position:absolute; inset:5px; border-radius:50%; border:1px solid var(--bio); opacity:0.7;
+}
+@keyframes rippleExpand {
+  0%   { transform:scale(0.25); opacity:0.95; }
+  100% { transform:scale(10); opacity:0; }
+}
+
+/* ── SPLASH DE CARGA ── */
+#splash {
+  position:fixed; inset:0; z-index:99999; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px;
+  background:radial-gradient(circle at 50% 42%, #0D0B22 0%, var(--abyss) 68%);
+  transition:opacity .6s ease, visibility .6s ease;
+}
+#splash.splash-hide { opacity:0; visibility:hidden; pointer-events:none; }
+.splash-logo { width:64px; height:64px; position:relative; display:flex; align-items:center; justify-content:center; }
+.splash-ring { position:absolute; inset:0; border:2px solid var(--current); border-radius:50%; opacity:0; animation:splashRing 2.4s ease-out infinite; }
+.splash-ring:nth-child(2) { border-color:var(--bio); animation-delay:.55s; }
+.splash-ring:nth-child(3) { border-color:var(--violet); animation-delay:1.1s; }
+@keyframes splashRing { 0% { transform:scale(0.4); opacity:0.9; } 100% { transform:scale(1.7); opacity:0; } }
+.splash-text { font-family:var(--mono); font-size:15px; letter-spacing:3px; text-transform:uppercase; color:var(--t2); }
+.splash-bar { position:relative; width:190px; height:2px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden; }
+.splash-bar::after {
+  content:''; position:absolute; top:0; left:0; width:40%; height:100%; border-radius:2px;
+  background:linear-gradient(90deg,var(--current),var(--bio));
+  animation:splashLoad 1.3s ease-in-out infinite;
+}
+@keyframes splashLoad { 0% { transform:translateX(-100%); } 100% { transform:translateX(350%); } }
+
+/* ── VIDRIO COMPARTIDO ── */
+.glass {
+  border-radius:var(--radius);
+  border:1px solid transparent;
+  background:
+    linear-gradient(var(--panel), var(--panel)) padding-box,
+    var(--holo) border-box;
+  background-size: 100% 100%, 260% 260%;
+  backdrop-filter: blur(22px) saturate(135%);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+  box-shadow: 0 16px 44px rgba(2,3,10,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+}
 
 /* ── HEADER ── */
 #header {
-  position:fixed; top:0; left:0; right:0;
+  position:fixed; top:var(--gap); left:var(--gap); right:var(--gap);
   height:var(--header-h);
-  background:linear-gradient(90deg,#071A36 0%,#0F2E55 100%);
-  border-bottom:1px solid var(--border);
-  display:flex; align-items:center;
-  padding:0 16px; gap:12px;
+  display:flex; align-items:center; gap:14px;
+  padding:0 18px;
   z-index:9000;
-  box-shadow:0 2px 20px rgba(0,0,0,0.5);
+  border-radius:var(--radius);
+  border:1px solid transparent;
+  background:
+    linear-gradient(var(--panel), var(--panel)) padding-box,
+    var(--holo) border-box;
+  backdrop-filter:blur(26px) saturate(140%);
+  -webkit-backdrop-filter:blur(26px) saturate(140%);
+  box-shadow:0 18px 50px rgba(2,3,10,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
 }
 .h-logo {
-  width:36px; height:36px; border-radius:50%; flex-shrink:0;
-  background:linear-gradient(135deg,var(--accent),#8B2A15);
+  width:44px; height:44px; border-radius:13px; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
-  font: size 20px;
-  box-shadow:0 0 0 2px rgba(196,75,43,0.35);
+  background:linear-gradient(135deg, rgba(34,211,238,0.22), rgba(20,184,166,0.16));
+  border:1px solid rgba(34,211,238,0.35);
+  position:relative;
 }
-.h-text { display:flex; flex-direction:column; gap:1px; }
-.h-title { font-size:30px; font-weight:700; color:var(--white); }
-.h-sub   { font-size:24px; font-weight:500; color:var(--t2); text-transform:uppercase; letter-spacing:0.6px; }
+.h-logo svg { width:24px; height:24px; filter:drop-shadow(0 0 6px rgba(34,211,238,0.5)); }
+.h-text { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.h-title {
+  font-family:var(--font-display); font-size:20px; font-weight:700; letter-spacing:-0.01em;
+  background:linear-gradient(90deg, var(--t1) 0%, var(--current) 35%, var(--bio) 70%, var(--t1) 100%);
+  background-size:280% 100%;
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:gradientTextShift 9s ease-in-out infinite;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.h-sub { font-family:var(--mono); font-size:12.5px; font-weight:500; letter-spacing:1.8px; text-transform:uppercase; color:var(--t2); }
+@keyframes gradientTextShift { 0%,100% { background-position:0% 50%; } 50% { background-position:100% 50%; } }
+
 .h-badge {
-  margin-left:auto;
-  background:var(--accent-soft); border:1px solid rgba(255, 55, 0, 0.4);
-  border-radius:20px; padding:3px 11px;
-  font-size:20px; font-weight:600; color:#fffb00;
-  text-transform:uppercase; letter-spacing:1.5px;
+  margin-left:auto; position:relative; overflow:hidden; flex-shrink:0;
+  display:flex; align-items:center; gap:7px;
+  background:linear-gradient(120deg, rgba(124,134,217,0.22), rgba(34,211,238,0.16));
+  border:1px solid rgba(124,134,217,0.4);
+  border-radius:var(--radius-pill);
+  padding:8px 16px 8px 12px;
+  font-family:var(--mono); font-size:13px; font-weight:600; letter-spacing:1.3px; color:var(--t1);
+  text-transform:uppercase;
 }
-
-/* ── LAYOUT ── */
-#map {
-  position:fixed;
-  top:var(--header-h); bottom:var(--footer-h);
-  left:var(--panel-w); right:var(--layers-w);
-  transition:left 0.28s cubic-bezier(.4,0,.2,1);
+.h-badge-dot { width:7px; height:7px; border-radius:50%; background:var(--bio); box-shadow:0 0 8px var(--bio); flex-shrink:0; animation:pulseDot 2s ease-in-out infinite; }
+.h-badge::after {
+  content:''; position:absolute; top:0; left:-150%; width:55%; height:100%;
+  background:linear-gradient(120deg, transparent, rgba(255,255,255,0.25), transparent);
+  transform:skewX(-20deg); animation:shimmer 5s ease-in-out infinite;
 }
-/* Al colapsar el sidebar de Buscador/Herramientas, el panel de Capas (derecha) sigue visible */
-#map.full { left:0; }
+@keyframes pulseDot { 0%,100% { box-shadow:0 0 0 0 rgba(20,184,166,0.55); } 50% { box-shadow:0 0 0 6px rgba(20,184,166,0); } }
+@keyframes shimmer { 0% { left:-150%; } 60%,100% { left:150%; } }
 
-/* ── SIDEBAR ── */
+/* ── LAYOUT DE PANELES FLOTANTES ── */
 #sidebar {
   position:fixed;
-  top:var(--header-h); bottom:var(--footer-h);
-  left:0; width:var(--panel-w);
-  background:var(--panel);
-  border-right:1px solid var(--border);
+  top:calc(var(--gap)*2 + var(--header-h));
+  left:var(--gap);
+  width:var(--panel-w);
+  max-height:calc(100vh - var(--gap)*3 - var(--header-h) - var(--footer-h));
   z-index:8000;
+  overflow-y:auto; overflow-x:hidden;
   display:flex; flex-direction:column;
-  overflow:hidden;
-  box-shadow:2px 0 16px rgba(0,0,0,0.3);
-  transition:transform 0.28s cubic-bezier(.4,0,.2,1);
+  transition:transform .34s var(--ease), opacity .34s var(--ease);
 }
-#sidebar.collapsed { transform:translateX(calc(-1 * var(--panel-w))); }
+#sidebar.collapsed { transform:translateX(calc(-100% - var(--gap)*3)); opacity:0; pointer-events:none; }
 
-/* ── PANEL DE CAPAS (independiente, siempre visible, margen derecho) ── */
 #layers-panel {
   position:fixed;
-  top:var(--header-h); bottom:var(--footer-h);
-  right:0; width:var(--layers-w);
-  background:var(--panel);
-  border-left:1px solid var(--border);
+  top:calc(var(--gap)*2 + var(--header-h));
+  right:var(--gap);
+  width:var(--layers-w);
+  max-height:calc(100vh - var(--gap)*3 - var(--header-h) - var(--footer-h));
   z-index:8100;
   display:flex; flex-direction:column;
   overflow:hidden;
-  box-shadow:-2px 0 16px rgba(0,0,0,0.3);
+  transition:transform .34s var(--ease), opacity .34s var(--ease);
 }
+#layers-panel.collapsed { transform:translateX(calc(100% + var(--gap)*3)); opacity:0; pointer-events:none; }
 
-/* toggle */
-#sidebar-toggle {
+/* ── TOGGLES FLOTANTES ── */
+#sidebar-toggle, #layers-toggle {
   position:fixed;
-  top:calc(var(--header-h) + 90px);
-  left:calc(var(--panel-w) + 10px);
+  top:calc(var(--gap)*2 + var(--header-h) + 6px);
   z-index:8500;
-  width:28px; height:28px;
-  background:var(--panel); border:1px solid var(--border);
-  border-radius:var(--radius); cursor:pointer;
-  color:var(--t1); font-size:13px;
+  width:36px; height:36px;
+  border-radius:50%;
+  cursor:pointer;
+  color:var(--t1); font-size:16px; font-weight:600;
   display:flex; align-items:center; justify-content:center;
-  transition:left 0.28s cubic-bezier(.4,0,.2,1), background 0.15s;
+  border:1px solid transparent;
+  background:
+    linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box,
+    var(--holo) border-box;
+  box-shadow:0 8px 22px rgba(2,3,10,0.5);
+  transition:left .34s var(--ease), right .34s var(--ease), transform .18s var(--spring), background .15s;
 }
-#sidebar-toggle:hover { background:var(--panel-light); }
-#sidebar-toggle.closed { left:8px; }
-S
-/* ── SIDEBAR SECTIONS ── */
-.s-section { border-bottom:1px solid var(--border); padding:0; }
+#sidebar-toggle:hover, #layers-toggle:hover { transform:scale(1.08); }
+#sidebar-toggle:active, #layers-toggle:active { transform:scale(0.94); }
 
-/* Encabezado de sección — barra lateral de color + fondo tintado */
+#sidebar-toggle { left:calc(var(--gap) + var(--panel-w) + 10px); }
+#sidebar-toggle.closed { left:var(--gap); }
+
+#layers-toggle {
+  right:calc(var(--gap) + var(--layers-w) + 10px);
+  display:none;
+}
+#layers-toggle.closed { right:var(--gap); }
+#layers-toggle svg { transition:transform .3s var(--ease); }
+#layers-toggle.closed svg { transform:rotate(180deg); }
+
+/* ── SECCIONES DEL SIDEBAR ── */
+.s-section { border-bottom:1px solid rgba(255,255,255,0.06); padding:0; }
+.s-section:last-child { border-bottom:none; }
+
 .s-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 14px;
-  margin-bottom: 0;
-  font-size: 20.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--t1);
-  background: rgba(45, 125, 210, 0.12);
-  border-left: 3px solid var(--blue);
-  user-select: none;
+  display:flex; align-items:center; gap:10px;
+  padding:14px 16px 10px;
+  font-family:var(--font-display); font-size:15.5px; font-weight:700;
+  text-transform:uppercase; letter-spacing:1.1px;
+  color:var(--t1);
+  user-select:none;
 }
+.s-label .icon-badge {
+  width:28px; height:28px; border-radius:9px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.s-label .icon-badge svg { width:16px; height:16px; }
 
-/* Contenido interior de cada sección con padding propio */
-.s-section > *:not(.s-label) { padding-left:14px; padding-right:14px; }
-.s-section > *:not(.s-label):first-of-type { padding-top:10px; }
-.s-section > *:not(.s-label):last-child    { padding-bottom:12px; }
+.s-section:nth-child(1) .s-label .icon-badge { background:linear-gradient(135deg, rgba(34,211,238,0.3), rgba(34,211,238,0.08)); color:#7EE3F7; box-shadow:inset 0 0 0 1px rgba(34,211,238,0.35); }
+.s-section:nth-child(2) .s-label .icon-badge { background:linear-gradient(135deg, rgba(201,123,82,0.3), rgba(201,123,82,0.08)); color:#E3B394; box-shadow:inset 0 0 0 1px rgba(201,123,82,0.35); }
+#layers-panel > .s-label .icon-badge { background:linear-gradient(135deg, rgba(20,184,166,0.3), rgba(20,184,166,0.08)); color:#7FD9C8; box-shadow:inset 0 0 0 1px rgba(20,184,166,0.35); }
+#layers-panel > .s-label { flex-shrink:0; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.06); }
 
-/* Color de acento por sección */
-.s-section:nth-child(1) .s-label {   /* Búsqueda — celeste */
-  border-color: #48B3E8;
-  background: rgba(72,179,232,0.10);
-  color: #A8DCF5;
-}
-.s-section:nth-child(2) .s-label {   /* Medición — tierra */
-  border-color: var(--accent);
-  background: rgba(196,75,43,0.12);
-  color: #E8916E;
-}
-#layers-panel > .s-label {            /* Capas — verde agua */
-  border-left: 3px solid #4EC9A0;
-  background: rgba(78,201,160,0.10);
-  color: #90DFC4;
-  padding: 9px 14px;
-  margin: 0;
-  flex-shrink: 0;                     /* el título queda fijo arriba, no scrollea */
-}
+.s-section > *:not(.s-label) { padding-left:16px; padding-right:16px; }
+.s-section > *:not(.s-label):first-of-type { padding-top:2px; }
+.s-section > *:not(.s-label):last-child { padding-bottom:14px; }
 
 /* Search */
 #search-layer-wrap { padding-top:2px; }
 #search-layer-select {
-  width:100%; padding:8px 10px;
-  background:rgba(255,255,255,0.06);
-  border:1px solid var(--border); border-radius:var(--radius);
-  color:var(--t1); font-family:var(--font); font-size:14px;
-  outline:none; transition:border-color 0.15s; cursor:pointer;
+  width:100%; padding:10px 14px;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.09); border-radius:var(--radius-sm);
+  color:var(--t1); font-family:var(--font); font-size:15.5px; font-weight:500;
+  outline:none; transition:border-color .15s, background .15s; cursor:pointer;
+  appearance:none; -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2322D3EE' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center;
 }
-#search-layer-select:focus { border-color:var(--blue); }
-#search-layer-select option { background:var(--panel); color:var(--t1); }
+#search-layer-select:focus { border-color:var(--current); background-color:rgba(34,211,238,0.06); }
+#search-layer-select option { background:var(--panel-solid); color:var(--t1); }
+
 #search-wrap { position:relative; padding-top:10px; padding-bottom:12px; }
 #search-input {
-  width:100%; padding:8px 10px 8px 30px;
-  background:rgba(255,255,255,0.06);
-  border:1px solid var(--border); border-radius:var(--radius);
-  color:var(--t1); font-family:var(--font); font-size:15px;
-  outline:none; transition:border-color 0.15s;
+  width:100%; padding:12px 14px 12px 42px;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.09); border-radius:var(--radius-pill);
+  color:var(--t1); font-family:var(--font); font-size:16px;
+  outline:none; transition:border-color .18s, box-shadow .18s, background .18s;
 }
-#search-input:focus { border-color:var(--blue); }
-#search-input::placeholder { color:var(--t2); }
+#search-input:focus {
+  border-color:var(--current);
+  background:rgba(34,211,238,0.06);
+  box-shadow:0 0 0 4px rgba(34,211,238,0.14);
+}
+#search-input::placeholder { color:var(--t3); }
 .s-icon {
-  position:absolute; left:19px; top:41%; transform:translateY(-50%);
-  color:var(--t2); pointer-events:none; font-size:39px;
+  position:absolute; left:14px; top:calc(41% + 5px); transform:translateY(-50%);
+  color:var(--t2); pointer-events:none; display:flex; width:18px; height:18px;
 }
-#search-results {
-  margin-top:6px; display:flex; flex-direction:column; gap:3px;
-  max-height:160px; overflow-y:auto;
-}
+.s-icon svg { width:100%; height:100%; }
+
+#search-results { margin-top:6px; display:flex; flex-direction:column; gap:5px; max-height:200px; overflow-y:auto; }
 .sr-item {
-  padding:7px 10px; border-radius:5px;
-  background:rgba(255,255,255,0.04); border:1px solid transparent;
-  color:var(--t1); font-size:15px; cursor:pointer;
-  transition:background 0.12s;
+  padding:10px 14px; border-radius:var(--radius-sm);
+  background:rgba(255,255,255,0.045); border:1px solid rgba(255,255,255,0.06);
+  color:var(--t1); font-size:15.5px; font-weight:500; cursor:pointer;
+  transition:background .15s, border-color .15s, transform .15s;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  -webkit-text-size-adjust:100%; text-size-adjust:100%;
+  animation:fadeSlideIn .3s var(--ease) both;
 }
-.sr-item:hover { background:var(--blue-soft); border-color:var(--border); }
-.sr-empty { color:var(--t2); font-size:12px; padding:4px 2px; }
+.sr-item:hover { background:rgba(34,211,238,0.12); border-color:rgba(34,211,238,0.4); transform:translateX(2px); }
+.sr-empty { color:var(--t3); font-size:14.5px; padding:6px 2px; font-style:italic; animation:fadeSlideIn .3s var(--ease) both; }
+@keyframes fadeSlideIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
 
 /* Tools */
 .tool-btn {
-  width:100%; display:flex; align-items:center; gap:9px;
-  padding:9px 10px; border-radius:var(--radius);
-  background:rgba(255,255,255,0.04); border:1px solid transparent;
-  color:var(--t1); font-family:var(--font); font-size:15px;
-  cursor:pointer; transition:background 0.15s;
-  text-align:left; margin-bottom:5px; margin-top:0;
+  width:100%; display:flex; align-items:center; gap:11px;
+  padding:12px 14px; border-radius:var(--radius-sm);
+  background:rgba(255,255,255,0.045); border:1px solid rgba(255,255,255,0.07);
+  color:var(--t1); font-family:var(--font); font-size:16px; font-weight:600;
+  cursor:pointer; transition:background .18s, border-color .18s, transform .15s, box-shadow .18s;
+  text-align:left; margin-bottom:8px; margin-top:0; position:relative;
 }
 .s-section:nth-child(2) .tool-btn:first-of-type { margin-top:10px; }
-.tool-btn:last-of-type { margin-bottom:12px; }
-.tool-btn:hover { background:var(--blue-soft); border-color:var(--border); }
-.tool-btn.active { background:var(--blue-soft); border-color:var(--blue); color:#7EC8F7; }
+.tool-btn:last-of-type { margin-bottom:0; }
+.tool-btn:hover { background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.15); transform:translateY(-1px); }
+.tool-btn:active { transform:translateY(0); }
+
+.tb-icon { width:32px; height:32px; border-radius:9px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+.tb-icon svg { width:17px; height:17px; }
+.tb-label { flex:1; }
+.tb-unit { font-family:var(--mono); font-size:13px; font-weight:600; color:var(--t3); letter-spacing:0.5px; }
+
+#btn-dist .tb-icon { background:linear-gradient(135deg, rgba(34,211,238,0.28), rgba(34,211,238,0.08)); color:#7EE3F7; }
+#btn-area .tb-icon { background:linear-gradient(135deg, rgba(124,134,217,0.28), rgba(124,134,217,0.08)); color:#AEB6E8; }
+#btn-coord .tb-icon { background:linear-gradient(135deg, rgba(201,123,82,0.3), rgba(201,123,82,0.08)); color:#E3B394; }
+#btn-clear .tb-icon { background:rgba(255,255,255,0.07); color:var(--t2); }
+#btn-download .tb-icon { background:linear-gradient(135deg, rgba(201,123,82,0.3), rgba(201,123,82,0.08)); color:#E3B394; }
+
+.tool-btn.active { border-color:transparent; box-shadow:0 0 0 1px rgba(34,211,238,0.5), 0 0 18px rgba(34,211,238,0.25); }
+#btn-dist.active { background:rgba(34,211,238,0.12); }
+#btn-dist.active .tb-icon { background:linear-gradient(135deg,var(--current),var(--current-2)); color:#04222b; animation:pulseDot 1.6s ease-in-out infinite; }
+#btn-area.active { background:rgba(124,134,217,0.12); box-shadow:0 0 0 1px rgba(124,134,217,0.5), 0 0 18px rgba(124,134,217,0.25); }
+#btn-area.active .tb-icon { background:linear-gradient(135deg,var(--violet),#B7BEEC); color:#1A2140; }
+#btn-coord.active { background:rgba(201,123,82,0.12); box-shadow:0 0 0 1px rgba(201,123,82,0.5), 0 0 18px rgba(201,123,82,0.25); }
+#btn-coord.active .tb-icon { background:linear-gradient(135deg,var(--flood),#E3B394); color:#3a1c10; animation:pulseDot 1.6s ease-in-out infinite; }
+
+#btn-download {
+  text-decoration:none; margin-top:4px;
+  background:linear-gradient(120deg, rgba(201,123,82,0.16), rgba(201,123,82,0.05));
+  border-color:rgba(201,123,82,0.3);
+  overflow:hidden;
+}
+#btn-download::after {
+  content:''; position:absolute; top:0; left:-150%; width:50%; height:100%;
+  background:linear-gradient(120deg, transparent, rgba(255,255,255,0.18), transparent);
+  transform:skewX(-20deg); animation:shimmer 4.5s ease-in-out infinite;
+}
+#btn-download:hover { border-color:rgba(201,123,82,0.55); box-shadow:0 0 18px rgba(201,123,82,0.2); }
+
 #measure-result {
-  margin-top:8px; padding:8px 10px;
-  background:rgba(0,0,0,0.25); border-radius:var(--radius);
-  border-left:3px solid var(--accent);
-  font-family:var(--mono); font-size:13px; color:var(--t1);
+  margin-top:10px; padding:12px 14px;
+  background:rgba(0,0,0,0.3); border-radius:var(--radius-sm);
+  border:1px solid rgba(34,211,238,0.3); border-left:3px solid var(--current);
+  font-family:var(--mono); font-size:15px; font-weight:600; color:var(--bio);
   display:none;
+  text-shadow:0 0 12px rgba(20,184,166,0.35);
 }
 
-/* Layer tree */
-
-#layer-selector {
-  background: var(--panel);
-  color: white;
-  border: 1px solid var(--blue);
-  padding: 5px;
-  border-radius: 4px;
+#coord-result {
+  margin-top:10px; padding:12px 14px;
+  background:rgba(0,0,0,0.3); border-radius:var(--radius-sm);
+  border:1px solid rgba(201,123,82,0.32); border-left:3px solid var(--flood);
+  display:none; align-items:center; justify-content:space-between; gap:10px;
 }
+#coord-result.show { display:flex; }
+.coord-result-lines { display:flex; flex-direction:column; gap:3px; min-width:0; }
+#coord-result-gk { font-family:var(--mono); font-size:14px; font-weight:700; color:var(--t1); }
+#coord-result-ll { font-family:var(--mono); font-size:11.5px; font-weight:500; color:var(--t2); }
+#coord-copy-btn {
+  flex-shrink:0; width:32px; height:32px; border-radius:var(--radius-sm);
+  border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.06);
+  color:var(--t1); cursor:pointer; font-size:14px;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .15s, transform .15s var(--spring), border-color .15s;
+}
+#coord-copy-btn:hover { background:rgba(201,123,82,0.2); border-color:var(--flood); }
+#coord-copy-btn:active { transform:scale(0.9); }
+#coord-copy-btn.copied { background:rgba(20,184,166,0.25); border-color:var(--bio); color:#7FD9C8; }
 
+/* ── ÁRBOL DE CAPAS ── */
+#layer-selector { background:var(--panel-solid); color:var(--t1); border:1px solid var(--border); padding:6px 10px; border-radius:var(--radius-sm); font-family:var(--font); font-size:15px; }
 
-#layer-tree { flex:1; overflow-y:auto; padding:12px 14px; }
-.layer-group { margin-bottom:10px; }
-/* Reemplazar .layer-group-title actual y agregar clases de colapso */
+#layer-tree { flex:1; overflow-y:auto; padding:12px 16px 16px; }
+.layer-group { margin-bottom:6px; }
+
 .layer-group-title {
-  font-size:15px; font-weight:600; color:var(--t2);
-  text-transform:uppercase; letter-spacing:0.4px;
-  padding:6px; margin-bottom:4px;
-  border-bottom:1px solid rgba(255,255,255,0.07);
+  font-family:var(--font-display); font-size:14.5px; font-weight:700; color:var(--t2);
+  text-transform:uppercase; letter-spacing:0.6px;
+  padding:10px 12px; margin-bottom:2px;
   cursor:pointer;
   display:flex; justify-content:space-between; align-items:center;
-  transition: background 0.15s, color 0.15s;
-  border-radius:4px;
+  transition:background .15s, color .15s;
+  border-radius:var(--radius-sm);
+  background:rgba(255,255,255,0.03);
 }
-.layer-group-title:hover {
-  background: rgba(255,255,255,0.05);
-  color: var(--t1);
-}
-.group-toggle-icon {
-  font-size: 25px;
-  transition: transform 0.2s ease;
-}
-.group-toggle-icon.collapsed {
-  transform: rotate(-90deg);
-}
-.layer-group-content {
-  display: block;
-}
-.layer-group-content.collapsed {
-  display: none;
-}
-.layer-item {
-  display:flex; align-items:center; gap:8px;
-  padding:5px 2px; cursor:pointer;
-}
-.layer-item label { font-size:22px; color:var(--t1); cursor:pointer; flex:1; line-height:1.3; font-weight:500; }
-.layer-item input[type=checkbox] { accent-color:var(--blue); flex-shrink:0; cursor:pointer; }
+.layer-group-title:hover { background:rgba(255,255,255,0.07); color:var(--t1); }
+.group-toggle-icon { font-size:13px; color:var(--current); transition:transform .25s var(--ease); }
+.group-toggle-icon.collapsed { transform:rotate(-90deg); }
 
-.layer-item-block { margin-bottom:4px; }
-.layer-legend {
-  margin:-20px 0px 2px 0px;
-  padding-left: 20px;
-  font-size:16px;
-  color:var(--t2);
-  line-height:1.4;
+.layer-group-content {
+  display:grid; grid-template-rows:1fr;
+  transition:grid-template-rows .28s var(--ease), opacity .22s var(--ease);
+  opacity:1; overflow:hidden;
 }
-.layer-legend img {
-  width:16px; height:16px;
-  vertical-align:middle;
-  margin-right:6px;
-  object-fit:contain;
+.layer-group-content > * { overflow:hidden; min-height:0; }
+.layer-group-content.collapsed { grid-template-rows:0fr; opacity:0; }
+
+.layer-group-inner { min-height:0; }
+
+.layer-item { display:flex; align-items:center; gap:10px; padding:8px 10px; cursor:pointer; border-radius:8px; transition:background .15s; }
+.layer-item:hover { background:rgba(255,255,255,0.04); }
+.layer-item label { font-size:15.5px; color:var(--t1); cursor:pointer; flex:1; line-height:1.35; font-weight:500; }
+
+.layer-item input[type=checkbox] {
+  appearance:none; -webkit-appearance:none;
+  width:19px; height:19px; flex-shrink:0; cursor:pointer;
+  border-radius:6px; border:1.5px solid rgba(255,255,255,0.25);
+  background:rgba(255,255,255,0.04);
+  position:relative; transition:background .15s, border-color .15s;
 }
+.layer-item input[type=checkbox]:checked {
+  background:linear-gradient(135deg, var(--current), var(--bio));
+  border-color:transparent;
+  box-shadow:0 0 10px rgba(34,211,238,0.45);
+}
+.layer-item input[type=checkbox]:checked::after {
+  content:''; position:absolute; left:6px; top:2px; width:5px; height:9px;
+  border:solid #04222b; border-width:0 2px 2px 0; transform:rotate(45deg);
+}
+
+.layer-item-block { margin-bottom:2px; }
+.layer-legend { margin:-2px 0px 4px 0px; padding-left:28px; font-size:13.5px; color:var(--t3); line-height:1.5; }
+.layer-legend img { width:16px; height:16px; vertical-align:middle; margin-right:6px; object-fit:contain; border-radius:3px; }
 
 /* ── POPUP ── */
 .ol-popup {
   position:absolute;
-  background:rgba(11,37,69,0.93);
-  backdrop-filter:blur(12px);
-  border:1px solid rgba(45,125,210,0.45);
-  border-radius:8px;
-  padding:12px 14px 10px;
-  min-width:300px; max-width:4000px;
-  box-shadow:0 8px 28px rgba(0,0,0,0.5);
-  color:var(--t1); font-family:var(--font); font-size:13px;
+  background:linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box, var(--holo) border-box;
+  border:1px solid transparent;
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  border-radius:14px;
+  padding:16px 18px 14px;
+  min-width:300px; max-width:380px;
+  box-shadow:0 16px 44px rgba(2,3,10,0.6);
+  color:var(--t1); font-family:var(--font); font-size:15.5px;
   pointer-events:auto;
+  animation:popupIn .3s var(--spring);
 }
+@keyframes popupIn { from { opacity:0; transform:translateY(8px) scale(0.96); } to { opacity:1; transform:translateY(0) scale(1); } }
 .ol-popup table { width:100%; border-collapse:collapse; }
 .ol-popup th {
-  color:var(--t2); font-size:10px; font-weight:600;
-  text-transform:uppercase; letter-spacing:0.5px;
-  padding:3px 0; text-align:left;
+  color:var(--current); font-size:12px; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.7px;
+  padding:5px 0 2px; text-align:left; font-family:var(--mono);
 }
-.ol-popup td { color:var(--t1); font-size:13px; padding:1px 0 6px; }
+.ol-popup td { color:var(--t1); font-size:15.5px; font-weight:500; padding:0 0 8px; }
 .ol-popup-closer {
-  position:absolute; top:8px; right:10px;
-  color:var(--t2); text-decoration:none; font-size:15px;
-  transition:color 0.15s;
+  position:absolute; top:10px; right:12px;
+  width:24px; height:24px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,0.06);
+  color:var(--t2); text-decoration:none; font-size:14px;
+  transition:color .15s, background .15s, transform .2s;
 }
-.ol-popup-closer:hover { color:var(--t1); }
+.ol-popup-closer:hover { color:var(--white); background:rgba(20,184,166,0.25); transform:rotate(90deg); }
 .ol-popup-closer::after { content:'✕'; }
 
-/* ── OL CONTROLS ── */
+/* ── CONTROLES DE OPENLAYERS ── */
 .ol-control { background:transparent !important; padding:0 !important; }
 .ol-control button {
-  background:var(--panel) !important;
+  background:linear-gradient(var(--panel-solid), var(--panel-solid)) padding-box, var(--holo) border-box !important;
+  border:1px solid transparent !important;
   color:var(--t1) !important;
-  border:1px solid var(--border) !important;
-  border-radius:var(--radius) !important;
-  width:30px !important; height:30px !important;
-  font-size:16px !important;
-  transition:background 0.15s !important;
+  border-radius:11px !important;
+  width:36px !important; height:36px !important;
+  font-size:18px !important;
+  box-shadow:0 6px 18px rgba(2,3,10,0.45) !important;
+  transition:transform .15s var(--spring), box-shadow .15s !important;
 }
-.ol-control button:hover { background:var(--panel-light) !important; }
-.ol-zoom { display:flex !important; flex-direction:column !important; gap:4px !important; }
+.ol-control button:hover { transform:translateY(-1px) scale(1.05) !important; box-shadow:0 0 16px rgba(34,211,238,0.35) !important; }
+.ol-zoom {
+  display:flex !important; flex-direction:column !important; gap:6px !important;
+  position:absolute !important; top:auto !important; left:var(--gap) !important;
+  bottom:calc(var(--footer-h) + var(--gap)*2) !important;
+}
 .ol-attribution {
-  background:rgba(11,37,69,0.8) !important;
-  border-radius:var(--radius) !important;
+  background:var(--panel) !important;
+  backdrop-filter:blur(14px);
+  border-radius:var(--radius-sm) !important;
   border:1px solid var(--border) !important;
-  font-size:10px !important;
+  font-size:12px !important;
+  bottom:calc(var(--footer-h) + var(--gap)*2) !important;
+  right:var(--gap) !important;
 }
-.ol-attribution a { color:var(--blue) !important; }
-.ol-scale-line { background:rgba(11,37,69,0.7) !important; border-radius:4px !important; padding:2px 6px !important; }
-.ol-scale-line-inner { border-color:var(--t2) !important; color:var(--t2) !important; font-size:10px !important; }
+.ol-attribution a { color:var(--current) !important; }
+.ol-scale-line {
+  background:var(--panel) !important; backdrop-filter:blur(14px);
+  border-radius:var(--radius-pill) !important; padding:4px 12px !important;
+  border:1px solid var(--border) !important;
+  bottom:calc(var(--footer-h) + var(--gap)*2) !important;
+  left:50% !important; transform:translateX(-50%) !important;
+}
+.ol-scale-line-inner { border-color:var(--current) !important; color:var(--t1) !important; font-size:12.5px !important; font-family:var(--mono) !important; }
 
-/* Measure tooltip */
+/* Tooltip de medición */
 .mtooltip {
-  background:rgba(11,37,69,0.9);
-  border:1px solid var(--blue);
-  border-radius:5px; padding:4px 8px;
-  color:var(--t1); font-family:var(--mono); font-size:12px;
+  background:var(--panel-solid); border:1px solid var(--current);
+  border-radius:8px; padding:6px 12px;
+  color:var(--t1); font-family:var(--mono); font-size:14px; font-weight:600;
   white-space:nowrap; pointer-events:none;
+  box-shadow:0 6px 18px rgba(2,3,10,0.5), 0 0 14px rgba(34,211,238,0.25);
 }
-.mtooltip.final { background:rgba(196,75,43,0.85); border-color:var(--accent); }
+.mtooltip.final { background:linear-gradient(135deg, rgba(201,123,82,0.92), rgba(163,92,60,0.92)); border-color:var(--flood); color:#fff; box-shadow:0 6px 18px rgba(2,3,10,0.5), 0 0 14px rgba(201,123,82,0.35); }
 
 /* ── FOOTER ── */
 #footer {
-  position:fixed; bottom:0; left:0; right:0;
+  position:fixed; bottom:var(--gap); left:var(--gap); right:var(--gap);
   height:var(--footer-h);
-  background:#071A36; border-top:1px solid var(--border);
-  display:flex; align-items:center; padding:0 16px; gap:14px;
-  z-index:9000; font-size:11.5px; color:var(--t2);
+  display:flex; align-items:center; padding:0 18px; gap:14px;
+  z-index:9000; font-size:14px; color:var(--t2);
+  border-radius:var(--radius-pill);
+  border:1px solid transparent;
+  background:linear-gradient(var(--panel), var(--panel)) padding-box, var(--holo) border-box;
+  backdrop-filter:blur(22px) saturate(135%);
+  -webkit-backdrop-filter:blur(22px) saturate(135%);
+  box-shadow:0 14px 40px rgba(2,3,10,0.5);
 }
-.f-dot { width:6px; height:6px; background:var(--accent); border-radius:50%; flex-shrink:0; }
-.f-sep { width:1px; height:14px; background:var(--border); }
-.f-copy { margin-left:auto; font-family:var(--mono); font-size:10px; opacity:0.3; }
-#footer a { color:var(--blue); text-decoration:none; }
+.f-dot { width:8px; height:8px; background:var(--bio); border-radius:50%; flex-shrink:0; box-shadow:0 0 8px var(--bio); animation:pulseDot 2s ease-in-out infinite; }
+.f-sep { width:1px; height:16px; background:rgba(255,255,255,0.14); }
+.f-copy { margin-left:auto; font-family:var(--mono); font-size:12px; opacity:0.5; }
+#footer a { color:var(--current); text-decoration:none; position:relative; }
 #footer a:hover { color:var(--white); }
 
 /* scrollbar */
-::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar { width:6px; height:6px; }
 ::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:rgba(45,125,210,0.35); border-radius:3px; }
+::-webkit-scrollbar-thumb { background:linear-gradient(var(--current), var(--bio)); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:linear-gradient(var(--current-2), var(--bio)); }
 
-@media (max-width:640px) {
-  :root { --panel-w:260px; --layers-w:220px; }
-  .h-badge { display:none; }
+/* ── RESPONSIVE ── */
+@media (max-width:980px) {
+  :root { --panel-w:310px; --layers-w:290px; }
 }
+
+@media (max-width:768px) {
+  :root { --gap:10px; --header-h:56px; --footer-h:38px; --panel-w:min(88vw,350px); --layers-w:min(78vw,320px); }
+  .h-sub { display:none; }
+  .h-badge span:not(.h-badge-dot) { max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #layers-toggle { display:flex; }
+  .f-copy { display:none; }
+}
+
+@media (max-width:480px) {
+  .h-badge { display:none; }
+  .f-sep:last-of-type { display:none; }
+}
+/* ══════════════════════════════════════════════════════════════════════
+   FUNCIONES AGREGADAS — usa los mismos tokens de arriba, sin backdrop-filter
+   nuevo (para no sumarle peso al render; el resto del archivo no se tocó)
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Barra de progreso de carga de tiles */
+#tile-progress { position:fixed; top:0; left:0; right:0; height:3px; z-index:99998; overflow:hidden; opacity:0; transition:opacity .25s; pointer-events:none; }
+#tile-progress.active { opacity:1; }
+#tile-progress-bar { position:absolute; top:0; left:0; height:100%; width:30%; background:linear-gradient(90deg, var(--current), var(--bio)); animation:tileBarSlide 1s ease-in-out infinite; }
+@keyframes tileBarSlide { 0% { transform:translateX(-100%); } 100% { transform:translateX(420%); } }
+
+/* Chip de coordenadas GK Faja 5 */
+.map-chip {
+  position:fixed; z-index:25;
+  background:var(--panel-solid);
+  border:1px solid var(--border);
+  border-radius:var(--radius-pill);
+  padding:8px 16px;
+  font-family:var(--mono); font-size:12.5px; font-weight:500; color:var(--t1);
+  box-shadow:0 8px 22px rgba(2,3,10,0.45);
+  pointer-events:none; user-select:none;
+}
+#coord-readout { top:calc(var(--gap)*2 + var(--header-h) + 10px); left:50%; transform:translateX(-50%); }
+
+/* Selector de mapa base */
+#basemap-switcher {
+  position:fixed; z-index:25;
+  top:calc(var(--gap)*2 + var(--header-h) + 10px);
+  right:calc(var(--layers-w) + var(--gap)*2 + 10px);
+  display:flex; gap:4px; padding:5px;
+  background:var(--panel-solid); border:1px solid var(--border); border-radius:var(--radius-pill);
+  box-shadow:0 8px 22px rgba(2,3,10,0.45);
+}
+.basemap-btn {
+  width:32px; height:32px; border-radius:var(--radius-pill); border:none; cursor:pointer;
+  background:transparent; font-size:14px;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .15s, transform .15s var(--spring);
+  filter:grayscale(1) opacity(.55);
+}
+.basemap-btn:hover { background:rgba(255,255,255,.08); transform:scale(1.08); }
+.basemap-btn.active { background:rgba(34,211,238,.18); filter:none; box-shadow:inset 0 0 0 1px var(--current); }
+
+/* Toolbar del mapa: inicio / pantalla completa / geolocalización */
+#map-toolbar {
+  position:fixed; z-index:25;
+  top:calc(var(--gap)*2 + var(--header-h) + 56px);
+  right:calc(var(--layers-w) + var(--gap)*2 + 10px);
+  display:flex; flex-direction:column; gap:8px;
+}
+.map-btn {
+  width:36px; height:36px; border-radius:50%; cursor:pointer;
+  background:var(--panel-solid); border:1px solid var(--border);
+  color:var(--current); font-size:15px;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 8px 22px rgba(2,3,10,0.45);
+  transition:transform .15s var(--spring), box-shadow .15s, background .15s;
+}
+.map-btn:hover { transform:scale(1.08); box-shadow:0 0 16px rgba(34,211,238,.35); }
+.map-btn:active { transform:scale(0.92); }
+.map-btn.active { color:var(--bio); box-shadow:0 0 16px rgba(20,184,166,.4); }
+
+/* Minimapa (ol.control.OverviewMap), mismo criterio que zoom/attribution/scale-line */
+.ol-overviewmap {
+  position:absolute !important;
+  top:calc(var(--gap)*2 + var(--header-h) + 10px) !important;
+  left:calc(var(--panel-w) + var(--gap)*2 + 10px) !important;
+  right:auto !important; bottom:auto !important;
+}
+.ol-overviewmap:not(.ol-collapsed) {
+  background:var(--panel-solid) !important; border:1px solid var(--border) !important;
+  border-radius:var(--radius-sm) !important; overflow:hidden;
+  box-shadow:0 8px 22px rgba(2,3,10,0.45) !important;
+}
+.ol-overviewmap-map { width:150px !important; height:105px !important; border:none !important; }
+.ol-overviewmap .ol-overviewmap-box { border:1.5px solid var(--bio) !important; background:rgba(20,184,166,.14) !important; }
+.ol-overviewmap button {
+  position:absolute !important; bottom:4px !important; right:4px !important; top:auto !important; left:auto !important;
+  background:var(--panel-solid) !important; color:var(--current) !important;
+  border:1px solid var(--border) !important; border-radius:50% !important;
+  width:20px !important; height:20px !important; font-size:11px !important; line-height:18px !important;
+}
+
+/* Notificaciones (toasts) */
+#toast-container {
+  position:fixed; left:50%; bottom:calc(var(--footer-h) + var(--gap)*2 + 60px); transform:translateX(-50%);
+  z-index:99000; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none;
+}
+.toast {
+  pointer-events:auto;
+  background:var(--panel-solid); border:1px solid var(--border); border-left:3px solid var(--current);
+  border-radius:var(--radius-sm); padding:10px 16px;
+  font-size:13.5px; font-weight:500; color:var(--t1);
+  box-shadow:0 12px 30px rgba(2,3,10,0.5);
+  opacity:0; transform:translateY(10px) scale(.96);
+  transition:opacity .28s var(--ease), transform .28s var(--ease);
+  white-space:nowrap;
+}
+.toast.show { opacity:1; transform:translateY(0) scale(1); }
+.toast.ok   { border-left-color:var(--bio); }
+.toast.warn { border-left-color:var(--flood); }
+
+/* Slider de opacidad por capa */
+.layer-opacity-row { display:flex; align-items:center; gap:6px; padding:0 10px 8px 10px; }
+.layer-opacity-row span { font-family:var(--mono); font-size:10px; color:var(--t2); width:30px; text-align:right; flex-shrink:0; }
+input[type=range].layer-opacity {
+  appearance:none; -webkit-appearance:none; flex:1;
+  height:3px; border-radius:2px; background:rgba(255,255,255,.14); cursor:pointer;
+}
+input[type=range].layer-opacity::-webkit-slider-thumb {
+  appearance:none; -webkit-appearance:none;
+  width:12px; height:12px; border-radius:50%;
+  background:linear-gradient(135deg,var(--current),var(--bio));
+  border:2px solid rgba(255,255,255,.7);
+  box-shadow:0 0 6px rgba(34,211,238,.6);
+}
+input[type=range].layer-opacity::-moz-range-thumb {
+  width:12px; height:12px; border-radius:50%; border:2px solid rgba(255,255,255,.7);
+  background:linear-gradient(135deg,var(--current),var(--bio));
+}
+
+/* Badge contador de capas activas */
+#layers-badge {
+  margin-left:auto;
+  background:rgba(20,184,166,.16); border:1px solid rgba(20,184,166,.4);
+  color:#7FD9C8; font-family:var(--mono); font-size:11px; font-weight:700;
+  padding:2px 9px; border-radius:var(--radius-pill); min-width:20px; text-align:center;
+}
+#layers-badge.bump { animation:badgeBump .35s ease; }
+@keyframes badgeBump { 0% { transform:scale(1); } 40% { transform:scale(1.35); } 100% { transform:scale(1); } }
+
+/* Reloj en vivo (footer) */
+#live-clock { font-family:var(--mono); font-size:12.5px; color:var(--t2); }
+
+@media (max-width:480px) {
+  #overview-wrap, #map-toolbar, #basemap-switcher, #coord-readout { display:none; }
+}
+
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div id="header">
-  <div class="h-logo">💧</div>
-  <div class="h-text">
-    <div class="h-title">Secretaría de Recursos Hídricos - MOP</div>
-    
+<!-- FONDO AMBIENTE -->
+<div id="aurora" aria-hidden="true"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+<div id="grain" aria-hidden="true"></div>
+
+<!-- SPLASH DE CARGA -->
+<div id="splash">
+  <div class="splash-logo">
+    <span class="splash-ring"></span><span class="splash-ring"></span><span class="splash-ring"></span>
+    <svg viewBox="0 0 24 24" width="40" height="40">
+      <defs>
+        <linearGradient id="splashGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#22D3EE"/>
+          <stop offset="50%" stop-color="#14B8A6"/>
+          <stop offset="100%" stop-color="#14B8A6"/>
+        </linearGradient>
+      </defs>
+      <path d="M12 2C12 2 5 11 5 15.5A7 7 0 0012 22.5 7 7 0 0019 15.5C19 11 12 2 12 2Z" fill="url(#splashGrad)" opacity="0.85"/>
+    </svg>
   </div>
-  <div class="h-badge">VISUALIZADOR DE LOS RECURSOS HIDRICOS</div>
+  <div class="splash-text">Cargando sistema hídrico…</div>
+  <div class="splash-bar"></div>
 </div>
 
-<!-- TOGGLE -->
+<!-- HEADER -->
+<div id="header">
+  <div class="h-logo">
+    <svg viewBox="0 0 24 24" fill="none">
+      <defs>
+        <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#22D3EE"/>
+          <stop offset="100%" stop-color="#14B8A6"/>
+        </linearGradient>
+      </defs>
+      <path d="M12 2C12 2 5 11 5 15.5A7 7 0 0012 22.5 7 7 0 0019 15.5C19 11 12 2 12 2Z" fill="url(#logoGrad)" opacity="0.9"/>
+      <path d="M12 2C12 2 5 11 5 15.5A7 7 0 0012 22.5 7 7 0 0019 15.5C19 11 12 2 12 2Z" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1"/>
+    </svg>
+  </div>
+  <div class="h-text">
+    <div class="h-title">Secretaría de Recursos Hídricos - MOP</div>
+    <div class="h-sub">Sistema de Información Geográfica · Santa Fe</div>
+  </div>
+  <div class="h-badge"><span class="h-badge-dot"></span><span>Visualizador de los Recursos Hídricos</span></div>
+</div>
+
+<!-- TOGGLES -->
 <button id="sidebar-toggle" title="Mostrar/ocultar panel">◀</button>
+<button id="layers-toggle" title="Mostrar/ocultar capas">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"/></svg>
+</button>
 
 <!-- SIDEBAR -->
-<div id="sidebar">
+<div id="sidebar" class="glass">
 
-
-
-
-<div class="s-section">
-    <div class="s-label">🔍 Buscador</div>
+  <div class="s-section">
+    <div class="s-label">
+      <span class="icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+      Buscador
+    </div>
     <div id="search-layer-wrap">
       <select id="search-layer-select"></select>
     </div>
     <div id="search-wrap">
-      <span class="s-icon">⌕</span>
+      <span class="s-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
       <input id="search-input" type="text" placeholder="Escribí una localidad...">
-      
-
-
     </div>
     <div id="search-results"></div>
   </div>
 
   <div class="s-section">
-    <div class="s-label">📐 Herramientas</div>
+    <div class="s-label">
+      <span class="icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2"/><line x1="4" y1="13" x2="20" y2="13"/><circle cx="16" cy="13" r="2"/><line x1="4" y1="19" x2="20" y2="19"/><circle cx="11" cy="19" r="2"/></svg></span>
+      Herramientas
+    </div>
     <button class="tool-btn" id="btn-dist">
-      <span>📏</span><span>Medir Distancia (km)</span>
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5 16.5 3l4.5 4.5L7.5 21 3 16.5Z"/><path d="M12.5 7.5l2 2M9 11l2 2M5.5 14.5l2 2"/></svg></span>
+      <span class="tb-label">Medir distancia</span>
+      <span class="tb-unit">KM</span>
     </button>
     <button class="tool-btn" id="btn-area">
-      <span>⬡</span><span>Medir Área (m²)</span>
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2.5 20.5 7.5V16.5L12 21.5 3.5 16.5V7.5Z"/></svg></span>
+      <span class="tb-label">Medir área</span>
+      <span class="tb-unit">M²</span>
+    </button>
+    <button class="tool-btn" id="btn-coord">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.6"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg></span>
+      <span class="tb-label">Obtener coordenadas</span>
     </button>
     <button class="tool-btn" id="btn-clear">
-      <span>✕</span><span>Limpiar medición</span>
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></span>
+      <span class="tb-label">Limpiar medición</span>
     </button>
 
-    <a class="tool-btn" id="btn-download" href="https://drive.google.com/drive/folders/15TCNWOx3p6BlSUN_851tiyLdmoGeC0nQ?usp=sharing" target="_blank" style="display:flex; text-decoration:none;">
-  <span>🌐</span><span>Descargar Capas</span>
+    <a class="tool-btn" id="btn-download" href="https://drive.google.com/drive/folders/15TCNWOx3p6BlSUN_851tiyLdmoGeC0nQ?usp=sharing" target="_blank">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17.5a4 4 0 01-.5-7.97A5.5 5.5 0 0117.4 9.03 3.75 3.75 0 0117 17.5H7Z"/><path d="M12 10.5v6.3M9.3 14.3 12 17l2.7-2.7"/></svg></span>
+      <span class="tb-label">Descargar capas</span>
     </a>
 
     <div id="measure-result"></div>
+    <div id="coord-result">
+      <div class="coord-result-lines">
+        <div id="coord-result-gk"></div>
+        <div id="coord-result-ll"></div>
+      </div>
+      <button id="coord-copy-btn" title="Copiar al portapapeles">📋</button>
+    </div>
   </div>
 
 </div>
 
-<!-- PANEL DE CAPAS (independiente, siempre visible) -->
-<div id="layers-panel">
-  <div class="s-label">🗂 Capas</div>
+<!-- PANEL DE CAPAS -->
+<div id="layers-panel" class="glass">
+  <div class="s-label">
+    <span class="icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/></svg></span>
+    Capas <span id="layers-badge">0</span>
+  </div>
   <div id="layer-tree"></div>
 </div>
 
@@ -448,6 +871,23 @@ S
     <div id="popup-content"></div>
   </div>
 </div>
+<div class="map-vignette" aria-hidden="true"></div>
+<div id="ripple-layer" aria-hidden="true"></div>
+
+<!-- CONTROLES NUEVOS -->
+<div id="tile-progress"><div id="tile-progress-bar"></div></div>
+<div id="coord-readout" class="map-chip">GK Faja 5</div>
+<div id="basemap-switcher" role="group" aria-label="Mapa base">
+  <button class="basemap-btn active" data-base="osm" title="Calles">🗺️</button>
+  <button class="basemap-btn" data-base="sat" title="Satélite">🛰️</button>
+  <button class="basemap-btn" data-base="dark" title="Oscuro">🌑</button>
+</div>
+<div id="map-toolbar">
+  <button id="btn-home" class="map-btn" title="Vista inicial">⌂</button>
+  <button id="btn-fullscreen" class="map-btn" title="Pantalla completa">⛶</button>
+  <button id="btn-geoloc" class="map-btn" title="Mi ubicación">◎</button>
+</div>
+<div id="toast-container"></div>
 
 <!-- FOOTER -->
 <div id="footer">
@@ -455,14 +895,15 @@ S
   Desarrollado por <strong style="color:var(--t1)">Crudo Nicolás</strong>
   <div class="f-sep"></div>
   <a href="mailto:sig.obras24@gmail.com">sig.obras24@gmail.com</a>
+  <div class="f-sep"></div>
+  <span id="live-clock"></span>
   <div class="f-copy">© 2026 Ministerio de Obras Públicas</div>
   <a href="https://hits.sh/https://sigobras26.github.io/RecursosHidricos//" target="_blank" rel="noopener" style="margin-left:10px; display:flex; align-items:center;">
-    <img src="https://hits.sh/https://sigobras26.github.io/RecursosHidricos/.svg?style=flat-square&label=visitas&color=1e3a5f&labelColor=0d1b2a" alt="Visitas" style="height:18px;">
+    <img src="https://hits.sh/https://sigobras26.github.io/RecursosHidricos/.svg?style=flat-square&label=visitas&color=1e3a5f&labelColor=0d1b2a" alt="Visitas" style="height:18px; border-radius:6px;">
   </a>
 </div>
 
 <!-- ═══════════════ FUNCIONES AUXILIARES (de QGIS2web) ═══════════════ -->
-<!-- createTextStyle() y stripe() las usan los archivos styles/*.js -->
 <script>
 var createTextStyle = function(feature, resolution, labelText, labelFont,
                                labelFill, placement, bufferColor,
@@ -522,11 +963,9 @@ function stripe(stripeWidth, gapWidth, angle, color) {
 </script>
 
 <!-- ═══════════════ EXPRESIONES QGIS (fnc_*) ═══════════════ -->
-<!-- Algunos estilos usan expresiones de campo (fnc_concat, fnc_round, etc.) -->
 <script src="resources/qgis2web_expressions.js"></script>
 
 <!-- ═══════════════ ESTILOS DE CAPAS ═══════════════ -->
-<!-- Deben cargarse ANTES que layers.js porque layers.js los usa -->
 <script src="styles/DepartamentosSTAFE_1_style.js"></script>
 <script src="styles/100LocenRiesgo_2_style.js"></script>
 <script src="styles/Cue_Reg_style.js"></script>
@@ -542,6 +981,13 @@ function stripe(stripeWidth, gapWidth, angle, color) {
 <!-- ═══════════════ LÓGICA DEL MAPA ═══════════════ -->
 <script>
 'use strict';
+
+// ── PROYECCIÓN GAUSS-KRÜGER FAJA 5 (POSGAR 2007 / Argentina 5 — EPSG:5347) ────
+// Faja oficial de referencia para la provincia de Santa Fe (meridiano central -60°).
+proj4.defs('EPSG:5347',
+  '+proj=tmerc +lat_0=-90 +lon_0=-60 +k=1 +x_0=5500000 +y_0=0 ' +
+  '+ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+ol.proj.proj4.register(proj4);
 
 // ── MAPA ──────────────────────────────────────────────────────────────────────
 var map = new ol.Map({
@@ -559,11 +1005,162 @@ var map = new ol.Map({
   ])
 });
 
-// El export de QGIS2web trae el basemap OSM con opacity 0.4 (por eso se veía azulado).
-// Lo forzamos a su color natural sin tener que tocar layers.js.
 if (typeof lyr_OSMStandard_0 !== 'undefined') {
   lyr_OSMStandard_0.setOpacity(1);
 }
+
+// ── NOTIFICACIONES (toasts) ────────────────────────────────────────────────────
+var toastContainer = document.getElementById('toast-container');
+function showToast(msg, kind) {
+  var el = document.createElement('div');
+  el.className = 'toast' + (kind ? ' ' + kind : '');
+  el.textContent = msg;
+  toastContainer.appendChild(el);
+  requestAnimationFrame(function () { el.classList.add('show'); });
+  setTimeout(function () {
+    el.classList.remove('show');
+    setTimeout(function () { el.remove(); }, 300);
+  }, 2600);
+}
+
+// ── MARCADOR DE UBICACIÓN: reutiliza el efecto de "ripple" que ya tiene el sitio
+var rippleLayerEl = document.getElementById('ripple-layer');
+function rippleAtCoord(coord) {
+  if (!rippleLayerEl) return;
+  var px = map.getPixelFromCoordinate(coord);
+  if (!px) return;
+  var r = document.createElement('span');
+  r.className = 'water-ripple';
+  r.style.left = px[0] + 'px';
+  r.style.top  = px[1] + 'px';
+  rippleLayerEl.appendChild(r);
+  r.addEventListener('animationend', function () { if (r.parentNode) r.parentNode.removeChild(r); });
+}
+
+// ── BASEMAPS (Calles / Satélite / Oscuro) ──────────────────────────────────────
+var baseSat = new ol.layer.Tile({
+  source: new ol.source.XYZ({
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attributions: 'Tiles © Esri', crossOrigin: 'anonymous'
+  }),
+  visible: false
+});
+var baseDark = new ol.layer.Tile({
+  source: new ol.source.XYZ({
+    url: 'https://{a-d}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attributions: '© CARTO © OpenStreetMap contributors', crossOrigin: 'anonymous'
+  }),
+  visible: false
+});
+map.getLayers().insertAt(0, baseDark);
+map.getLayers().insertAt(0, baseSat);
+
+var basemapButtons = document.querySelectorAll('.basemap-btn');
+basemapButtons.forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var mode = btn.dataset.base;
+    if (typeof lyr_OSMStandard_0 !== 'undefined') lyr_OSMStandard_0.setVisible(mode === 'osm');
+    baseSat.setVisible(mode === 'sat');
+    baseDark.setVisible(mode === 'dark');
+    basemapButtons.forEach(function (b) { b.classList.toggle('active', b === btn); });
+  });
+});
+
+// Barra de progreso mientras cargan los tiles del basemap activo
+var tileProgressEl = document.getElementById('tile-progress');
+var pendingTiles = 0;
+[baseSat, baseDark].concat(typeof lyr_OSMStandard_0 !== 'undefined' ? [lyr_OSMStandard_0] : []).forEach(function (layer) {
+  var src = layer.getSource();
+  src.on('tileloadstart', function () { pendingTiles++; tileProgressEl.classList.add('active'); });
+  src.on('tileloadend',   function () { pendingTiles = Math.max(0, pendingTiles - 1); if (!pendingTiles) tileProgressEl.classList.remove('active'); });
+  src.on('tileloaderror', function () { pendingTiles = Math.max(0, pendingTiles - 1); if (!pendingTiles) tileProgressEl.classList.remove('active'); });
+});
+
+// ── MINIMAPA ────────────────────────────────────────────────────────────────
+if (typeof lyr_OSMStandard_0 !== 'undefined') {
+  map.addControl(new ol.control.OverviewMap({
+    layers: [new ol.layer.Tile({ source: lyr_OSMStandard_0.getSource() })],
+    collapsed: true,
+    collapsible: true,
+    tipLabel: 'Minimapa'
+  }));
+}
+
+// ── LECTURA DE COORDENADAS (Gauss-Krüger Faja 5) ──────────────────────────────
+var coordReadoutEl = document.getElementById('coord-readout');
+function fmtGK(n) {
+  return n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+map.on('pointermove', function (evt) {
+  if (evt.dragging) return;
+  var gk = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:5347');
+  coordReadoutEl.textContent = 'GK Faja 5 · X ' + fmtGK(gk[0]) + '   Y ' + fmtGK(gk[1]);
+});
+
+// ── TOOLBAR DEL MAPA (inicio / pantalla completa / geolocalización) ───────────
+var initialCenter = map.getView().getCenter();
+var initialZoom   = map.getView().getZoom();
+
+document.getElementById('btn-home').addEventListener('click', function () {
+  map.getView().animate({ center: initialCenter, zoom: initialZoom, duration: 600 });
+  showToast('⌂ Vista inicial restaurada');
+});
+
+var fsBtn = document.getElementById('btn-fullscreen');
+fsBtn.addEventListener('click', function () {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(function () {
+      showToast('No se pudo activar pantalla completa', 'warn');
+    });
+  } else {
+    document.exitFullscreen();
+  }
+});
+document.addEventListener('fullscreenchange', function () {
+  fsBtn.classList.toggle('active', !!document.fullscreenElement);
+  fsBtn.textContent = document.fullscreenElement ? '⤢' : '⛶';
+  setTimeout(function () { map.updateSize(); }, 200);
+});
+
+document.getElementById('btn-geoloc').addEventListener('click', function () {
+  if (!navigator.geolocation) { showToast('Geolocalización no disponible', 'warn'); return; }
+  var btn = this;
+  btn.classList.add('active');
+  navigator.geolocation.getCurrentPosition(function (pos) {
+    btn.classList.remove('active');
+    var coord = ol.proj.fromLonLat([pos.coords.longitude, pos.coords.latitude]);
+    map.getView().animate({ center: coord, zoom: 14, duration: 700 }, function (done) {
+      if (done) rippleAtCoord(coord);
+    });
+    showToast('◎ Ubicación encontrada', 'ok');
+  }, function () {
+    btn.classList.remove('active');
+    showToast('No se pudo obtener tu ubicación', 'warn');
+  }, { enableHighAccuracy: true, timeout: 8000 });
+});
+
+// ── ATAJOS DE TECLADO ──────────────────────────────────────────────────────────
+document.addEventListener('keydown', function (e) {
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'SELECT') {
+    e.preventDefault();
+    document.getElementById('search-input').focus();
+  }
+  if (e.key === 'Escape') {
+    clearMeasure();
+    popupEl.style.display = 'none';
+    overlay.setPosition(undefined);
+  }
+});
+
+// ── RELOJ EN VIVO (footer) ─────────────────────────────────────────────────────
+var liveClockEl = document.getElementById('live-clock');
+function tickClock() {
+  var d = new Date();
+  liveClockEl.textContent = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    + ' · ' + d.toLocaleTimeString('es-AR');
+}
+tickClock();
+setInterval(tickClock, 1000);
 
 // ── SIDEBAR TOGGLE ────────────────────────────────────────────────────────────
 var sidebarEl = document.getElementById('sidebar');
@@ -627,20 +1224,29 @@ function showPopup(feature, layer, coord) {
 }
 
 map.on('singleclick', function (evt) {
+  if (coordPickActive) {
+    var gk = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:5347');
+    var ll = ol.proj.toLonLat(evt.coordinate);
+    var gkText = 'GK Faja 5 · X ' + fmtGK(gk[0]) + '   Y ' + fmtGK(gk[1]);
+    var llText = 'Lat/Lon ' + ll[1].toFixed(6) + ', ' + ll[0].toFixed(6);
+    coordResultGk.textContent = gkText;
+    coordResultLl.textContent = llText;
+    lastCoordText = gkText + '\n' + llText;
+    coordResultBox.classList.add('show');
+    rippleAtCoord(evt.coordinate);
+    stopCoordPick();
+    return;
+  }
+
   if (activeDraw) return;
-  
-  // Reseteamos el estado
+
   var found = false;
 
-  // forEachFeatureAtPixel permite un tercer parámetro: un filtro de capas
   map.forEachFeatureAtPixel(evt.pixel, function (feature, layer) {
     if (!layer || !layer.get('interactive')) return;
 
-    // ESTO ES LO QUE ESTÁ FALLANDO: 
-    // Vamos a forzar que ignore la capa si getVisible() es falso
     if (layer.getVisible() === false) return;
 
-    // Si pasamos el filtro, procesamos el clic
     showPopup(feature, layer, evt.coordinate);
     
     var geom = feature.getGeometry();
@@ -653,10 +1259,9 @@ map.on('singleclick', function (evt) {
     }
     
     found = true;
-    return true; // Esto detiene la búsqueda en el resto de capas
+    return true;
   }, { 
     hitTolerance: 6,
-    // Filtro nativo de OpenLayers para ignorar capas invisibles desde el inicio
     layerFilter: function(layer) {
       return layer.getVisible(); 
     }
@@ -669,6 +1274,7 @@ map.on('singleclick', function (evt) {
 });
 
 map.on('pointermove', function (evt) {
+  if (coordPickActive) { map.getViewport().style.cursor = 'crosshair'; return; }
   if (activeDraw) { map.getViewport().style.cursor = 'crosshair'; return; }
 
   var hit = false;
@@ -678,21 +1284,16 @@ map.on('pointermove', function (evt) {
     if (layer.getVisible() === false) return;
     if (layer.get('interactive') === false) return;
     
-    // Si llegamos acá, pasamos por encima de algo válido y visible
     hit = true;
-    return true; // Frena la búsqueda
+    return true;
   }, { hitTolerance: 6 });
 
   map.getViewport().style.cursor = hit ? 'pointer' : '';
 });
+
 // ── BUSCADOR ──────────────────────────────────────────────────────────────────
-// Config de capas buscables: field = atributo a buscar en el geojson.
-// Por defecto "Obra" en todas, salvo excepciones puntuales (Localidades en
-// Riesgo sigue usando "Localidad"; las capas sin campo "Obra" real usan un
-// campo identificador equivalente como fallback).
 var layerSearchConfigs = [
   { varName: 'lyr_100LocenRiesgo_2',          label: 'Localidades en Riesgo',                  field: 'Localidad', url: 'layers/100LocenRiesgo_2.geojson' },
-  
   { varName: 'lyr_Puntos_Obras',              label: 'Obras por Terceros',   field: 'Obra',      url: 'layers/Infraestructura.geojson' }
 ];
 
@@ -704,10 +1305,8 @@ var searchGeoFormat = new ol.format.GeoJSON({
   featureProjection: 'EPSG:3857'
 });
 
-// Cache de features por capa, se carga bajo demanda (lazy) y se reutiliza.
 var searchCacheByLayer = {};
 
-// Poblar el selector de capas
 layerSearchConfigs.forEach(function (cfg) {
   var opt = document.createElement('option');
   opt.value = cfg.varName;
@@ -748,7 +1347,6 @@ function updateSearchPlaceholder() {
     : 'Escribí para buscar "' + cfg.field + '"...';
 }
 
-// Al cambiar de capa: limpiar resultados/input y precargar el geojson
 searchLayerSelect.addEventListener('change', function () {
   searchInput.value = '';
   searchResults.innerHTML = '';
@@ -757,7 +1355,6 @@ searchLayerSelect.addEventListener('change', function () {
 });
 
 updateSearchPlaceholder();
-// Precargar la capa seleccionada por defecto (Localidades en Riesgo)
 loadSearchCache(getSearchConfig(), function () {});
 
 searchInput.addEventListener('input', function () {
@@ -768,7 +1365,6 @@ searchInput.addEventListener('input', function () {
   var cfg = getSearchConfig();
 
   loadSearchCache(cfg, function (cache) {
-    // Si el usuario ya cambió de capa/borró el texto mientras cargaba, no seguir
     if (getSearchConfig().varName !== cfg.varName) return;
     var currentQ = searchInput.value.trim().toLowerCase();
     if (currentQ !== q) return;
@@ -792,7 +1388,10 @@ searchInput.addEventListener('input', function () {
       item.addEventListener('click', function () {
         var layer = window[cfg.varName];
         var coord = ol.extent.getCenter(f.getGeometry().getExtent());
-        map.getView().animate({ center: coord, zoom: 12, duration: 700 });
+        map.getView().animate({ center: coord, zoom: 12, duration: 700 }, function (done) {
+          if (done) rippleAtCoord(coord);
+        });
+        showToast('📍 ' + name, 'ok');
         if (layer) {
           layer.setVisible(true);
           showPopup(f, layer, coord);
@@ -829,6 +1428,68 @@ var resultDiv      = document.getElementById('measure-result');
 var btnDist        = document.getElementById('btn-dist');
 var btnArea        = document.getElementById('btn-area');
 
+// ── OBTENER COORDENADAS ────────────────────────────────────────────────────────
+var btnCoord        = document.getElementById('btn-coord');
+var coordResultBox  = document.getElementById('coord-result');
+var coordResultGk   = document.getElementById('coord-result-gk');
+var coordResultLl   = document.getElementById('coord-result-ll');
+var coordCopyBtn    = document.getElementById('coord-copy-btn');
+var coordPickActive = false;
+var lastCoordText   = '';
+
+function stopCoordPick() {
+  coordPickActive = false;
+  btnCoord.classList.remove('active');
+  if (!activeDraw) map.getViewport().style.cursor = '';
+}
+
+btnCoord.addEventListener('click', function () {
+  if (coordPickActive) { stopCoordPick(); return; }
+  clearMeasure();
+  coordPickActive = true;
+  btnCoord.classList.add('active');
+  map.getViewport().style.cursor = 'crosshair';
+  showToast('Hacé click en el mapa para tomar coordenadas', 'ok');
+});
+
+function fallbackCopy(text, cb) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); cb(); }
+  catch (e) { showToast('No se pudo copiar', 'warn'); }
+  document.body.removeChild(ta);
+}
+
+coordCopyBtn.addEventListener('click', function () {
+  if (!lastCoordText) return;
+  var done = function () {
+    coordCopyBtn.classList.add('copied');
+    coordCopyBtn.textContent = '✓';
+    showToast('Coordenadas copiadas al portapapeles', 'ok');
+    setTimeout(function () {
+      coordCopyBtn.classList.remove('copied');
+      coordCopyBtn.textContent = '📋';
+    }, 1400);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(lastCoordText).then(done).catch(function () { fallbackCopy(lastCoordText, done); });
+  } else {
+    fallbackCopy(lastCoordText, done);
+  }
+});
+
+function clearCoordResult() {
+  coordResultBox.classList.remove('show');
+  coordResultGk.textContent = '';
+  coordResultLl.textContent = '';
+  lastCoordText = '';
+  coordCopyBtn.classList.remove('copied');
+  coordCopyBtn.textContent = '📋';
+}
+
 function clearMeasure() {
   if (activeDraw) { map.removeInteraction(activeDraw); activeDraw = null; }
   measureSource.clear();
@@ -837,6 +1498,8 @@ function clearMeasure() {
   resultDiv.style.display = 'none';
   btnDist.classList.remove('active');
   btnArea.classList.remove('active');
+  stopCoordPick();
+  clearCoordResult();
 }
 
 function makeMoveTooltip() {
@@ -909,6 +1572,7 @@ function startMeasure(type) {
 
     resultDiv.style.display = 'block';
     resultDiv.textContent   = '📌 ' + out;
+    showToast('📏 ' + out, 'ok');
     makeFinalTooltip(out, coord);
 
     map.removeInteraction(activeDraw);
@@ -952,10 +1616,29 @@ btnArea.addEventListener('click', function () {
 document.getElementById('btn-clear').addEventListener('click', clearMeasure);
 
 // ── ÁRBOL DE CAPAS ────────────────────────────────────────────────────────────
+function updateLayersBadge() {
+  var count = 0;
+  (function walk(layers) {
+    layers.forEach(function (item) {
+      if (item instanceof ol.layer.Group) {
+        walk(item.getLayers().getArray());
+      } else if (!(item instanceof ol.layer.Tile) && item.getVisible()) {
+        count++;
+      }
+    });
+  })(layersList);
+  var badge = document.getElementById('layers-badge');
+  badge.textContent = count;
+  badge.classList.remove('bump');
+  void badge.offsetWidth;
+  badge.classList.add('bump');
+}
+
 function buildLayerTree() {
   var tree = document.getElementById('layer-tree');
   tree.innerHTML = '';
   renderGroup(layersList.slice().reverse(), tree);
+  updateLayersBadge();
 }
 
 function renderGroup(layers, container) {
@@ -967,11 +1650,9 @@ function renderGroup(layers, container) {
       var tDiv = document.createElement('div');
       tDiv.className   = 'layer-group-title';
 
-      // Nombre del grupo
       var titleText = document.createElement('span');
       titleText.textContent = item.get('title') || 'Grupo';
 
-      // Icono indicador de despliegue
       var icon = document.createElement('span');
       icon.className = 'group-toggle-icon collapsed';
       icon.textContent = '▼';
@@ -980,28 +1661,27 @@ function renderGroup(layers, container) {
       tDiv.appendChild(icon);
       gDiv.appendChild(tDiv);
 
-      // Contenedor que se va a ocultar/mostrar
       var contentDiv = document.createElement('div');
       contentDiv.className = 'layer-group-content collapsed';
 
-      // Evento para hacer el toggle
+      var innerWrapper = document.createElement('div');
+      innerWrapper.className = 'layer-group-inner';
+
       tDiv.addEventListener('click', function () {
         var isCollapsed = contentDiv.classList.toggle('collapsed');
         icon.classList.toggle('collapsed', isCollapsed);
       });
 
-      // Renderizar subcapas adentro del nuevo contentDiv
-      renderGroup(item.getLayers().getArray().slice().reverse(), contentDiv);
-      
+      renderGroup(item.getLayers().getArray().slice().reverse(), innerWrapper);
+
+      contentDiv.appendChild(innerWrapper);
       gDiv.appendChild(contentDiv);
       container.appendChild(gDiv);
 
     } else if (item instanceof ol.layer.Tile) {
-      // Capa base (OSM, etc.) — la dejamos fija, no aparece en el árbol
       return;
 
     } else {
-      // El título trae HTML con la leyenda real
       var rawTitle = item.get('title') || 'Capa';
 
       var iDiv = document.createElement('div');
@@ -1013,12 +1693,15 @@ function renderGroup(layers, container) {
       var cb = document.createElement('input');
       cb.type    = 'checkbox';
       cb.checked = item.getVisible();
-      cb.addEventListener('change', function () { item.setVisible(this.checked); });
-      item.on('change:visible', function () { cb.checked = item.getVisible(); });
+      cb.addEventListener('change', function () {
+        item.setVisible(this.checked);
+        showToast((this.checked ? '✓ ' : '— ') + layerName + (this.checked ? ' activada' : ' desactivada'), this.checked ? 'ok' : 'warn');
+        updateLayersBadge();
+      });
+      item.on('change:visible', function () { cb.checked = item.getVisible(); updateLayersBadge(); });
 
       var lbl = document.createElement('label');
 
-      // Separar nombre de capa de la leyenda
       var brIdx = rawTitle.search(/<br\s*\/?>/i);
       var layerName, legendHtml;
       if (brIdx === -1) {
@@ -1037,6 +1720,22 @@ function renderGroup(layers, container) {
       headRow.appendChild(lbl);
       iDiv.appendChild(headRow);
 
+      // Slider de opacidad
+      var opRow = document.createElement('div');
+      opRow.className = 'layer-opacity-row';
+      var opInput = document.createElement('input');
+      opInput.type = 'range'; opInput.className = 'layer-opacity';
+      opInput.min = 0; opInput.max = 100; opInput.value = Math.round(item.getOpacity() * 100);
+      var opLabel = document.createElement('span');
+      opLabel.textContent = opInput.value + '%';
+      opInput.addEventListener('input', function () {
+        item.setOpacity(this.value / 100);
+        opLabel.textContent = this.value + '%';
+      });
+      opRow.appendChild(opInput);
+      opRow.appendChild(opLabel);
+      iDiv.appendChild(opRow);
+
       if (legendHtml) {
         var legendDiv = document.createElement('div');
         legendDiv.className = 'layer-legend';
@@ -1050,6 +1749,60 @@ function renderGroup(layers, container) {
 }
 
 buildLayerTree();
+</script>
+
+<!-- ═══════════════ TOQUES 2026 ═══════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  try {
+    var splash = document.getElementById('splash');
+    var splashDone = false;
+    function hideSplash() {
+      if (splashDone || !splash) return;
+      splashDone = true;
+      splash.classList.add('splash-hide');
+      setTimeout(function () { if (splash && splash.parentNode) splash.parentNode.removeChild(splash); }, 700);
+    }
+    if (typeof map !== 'undefined' && map.once) {
+      map.once('rendercomplete', hideSplash);
+    }
+    setTimeout(hideSplash, 3200);
+
+    var rippleLayer = document.getElementById('ripple-layer');
+    if (typeof map !== 'undefined' && rippleLayer) {
+      map.on('singleclick', function (evt) {
+        var px = evt.pixel;
+        var r = document.createElement('span');
+        r.className = 'water-ripple';
+        r.style.left = px[0] + 'px';
+        r.style.top  = px[1] + 'px';
+        rippleLayer.appendChild(r);
+        r.addEventListener('animationend', function () {
+          if (r.parentNode) r.parentNode.removeChild(r);
+        });
+      });
+    }
+
+    var layersPanelEl = document.getElementById('layers-panel');
+    var layersToggle = document.getElementById('layers-toggle');
+    if (layersToggle && layersPanelEl) {
+      layersToggle.addEventListener('click', function () {
+        var collapsed = layersPanelEl.classList.toggle('collapsed');
+        layersToggle.classList.toggle('closed', collapsed);
+      });
+    }
+
+    if (window.innerWidth <= 768) {
+      var sToggle = document.getElementById('sidebar-toggle');
+      if (sToggle) sToggle.click();
+      if (layersToggle) layersToggle.click();
+    }
+  } catch (e) {
+    console.warn('Mejoras visuales 2026: algo no se pudo inicializar, pero el SIG sigue funcionando.', e);
+  }
+})();
 </script>
 </body>
 </html>

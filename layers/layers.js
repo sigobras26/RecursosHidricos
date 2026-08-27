@@ -78,9 +78,6 @@ var lyr_Canales_Troncales_licitacion = makeLayer('layers/licitacion_canales_tron
     //<img src="styles/legend/Linea_Licitacion_troncales.png" /> Canales Troncales para Licitacion<br />'
 });
 
-// ── Obras por Terceros ──
-
-
 
 var lyr_Lineas_Canales_Clandestinos = makeLayer('layers/Canales_CCland.geojson', linea_style_tipo, {
     popuplayertitle: 'Canales Clandestinos',
@@ -201,14 +198,7 @@ var lyr_Puntos_Convenios = makeLayer('layers/ConAdmDelegada_alcantarillas.geojso
 
 
 // ── Obras por Terceros ──
-var lyr_Areas_20 = makeLayer('layers/Reservorios y protecciones.geojson', style_Areas_20, {
-    popuplayertitle: 'Obras por Terceros - Reservorios y protecciones',
-    interactive: true,
-    title: 'Reservorios y protecciones<br />\
-    <img src="styles/legend/Areas_20_0.png" /> En Ejecucion<br />\
-    <img src="styles/legend/Areas_20_1.png" /> Finalizado<br />\
-    <img src="styles/legend/Areas_20_2.png" /> Sin Ejecutar<br />'
-});
+
 
 var lyr_Lineas_Obras = makeLayer('layers/Obras lineales.geojson', linea_style_estado, {
     popuplayertitle: 'Obras por Terceros - Obras lineales',
@@ -254,7 +244,7 @@ lyr_CanalesATN.setVisible(false);
 lyr_PuntosATN.setVisible(false);
 lyr_Lineas_Convenios.setVisible(false);
 lyr_Puntos_Convenios.setVisible(false);
-lyr_Areas_20.setVisible(false);
+
 lyr_Lineas_Obras.setVisible(false);
 lyr_Puntos_Obras.setVisible(false);
 
@@ -272,12 +262,12 @@ var group_LocalidadesenRiesgo = new ol.layer.Group({
 var group_PlanificacionHidrica = new ol.layer.Group({
     layers: [lyr_Regiones, lyr_Cuencas],
     fold: 'close',
-    title: 'Planificacion Hidrica'
+   title: 'Planificacion Hidrica'
 });
 var group_TroncalesySecundarios = new ol.layer.Group({
     layers: [lyr_CapaBaseTroncales],
     fold: 'close',
-    title: 'Troncales y Secundarios'
+    title: 'Red Hidrica de Santa Fe'
 });
 var group_LicitaciondeTroncales = new ol.layer.Group({
     layers: [lyr_Canales_Troncales_licitacion],
@@ -315,7 +305,7 @@ var group_ConveniosdeAdmDelegada = new ol.layer.Group({
     title: 'Convenios de Administración Delegada'
 });
 var group_ObrasporTerceros = new ol.layer.Group({
-    layers: [lyr_Areas_20, lyr_Lineas_Obras, lyr_Puntos_Obras],
+    layers: [lyr_Lineas_Obras, lyr_Puntos_Obras],
     fold: 'close',
     title: 'Obras por Terceros'
 });
@@ -332,7 +322,7 @@ lyr_Cuencas.set('fieldAliases', {'N_CCA': 'N_CCA', 'Area': 'Area', 'Perim': 'Per
 lyr_Lineas_Canales_Clandestinos.set('fieldAliases', {'Nombre': 'Nombre','Código': 'Expediente', 'Tipo': 'Tipo', 'Localidad': 'Localidad', 'Dpto': 'Departamento'});
 lyr_Puntos_Obras_Clandestinas.set('fieldAliases', {'Nombre': 'Nombre','Código': 'Expediente', 'Tipo': 'Tipo', 'Localidad': 'Localidad', 'Dpto': 'Departamento'});
 
-lyr_CapaBaseTroncales.set('fieldAliases', {'Nombre': 'Nombre', 'Jerarquia': 'Jerarquia', 'CAR': 'CAR', 'GES': 'GES', 'ACT': 'ACT', 'OBS': 'OBS',});
+lyr_CapaBaseTroncales.set('fieldAliases', {'Nombre': 'Nombre', 'Jerarquia': 'Jerarquia'});
 lyr_Canales_Troncales_licitacion.set('fieldAliases', {'Nombre': 'Nombre', 'Longuitud': 'Longuitud en KM', 'Estado': 'Estado', 'Datos': 'Datos', 'Zona': 'Zona'});
 lyr_PlanesdeObraCC2026Linea.set('fieldAliases', {'Nombre': 'Nombre', 'Estado': 'Estado', 'C Cuenca': 'Comite de Cuenca', 'Localidad': 'Localidad', 'Dpto': 'Departamento'});
 lyr_PlanesdeObraCC2026Punto.set('fieldAliases', {'Nombre': 'Nombre', 'Estado': 'Estado', 'C Cuenca': 'Comite de Cuenca', 'Localidad': 'Localidad', 'Dpto': 'Departamento'});
@@ -344,7 +334,7 @@ lyr_CanalesATN.set('fieldAliases', {'Ubicacion': 'Ubicacion', 'Nombre': 'Nombre'
 lyr_PuntosATN.set('fieldAliases', {'Ubicacion': 'Ubicacion', 'Nombre': 'Nombre', 'Estado': 'Estado', 'Datos': 'Datos'});
 lyr_Lineas_Convenios.set('fieldAliases', {'Nombre': 'Nombre', 'Datos': 'Datos', 'Estado': 'Estado', 'CC/Comuna': 'CC/Comuna', 'Fecha': 'Fecha', 'Obra': 'Obra'});
 lyr_Puntos_Convenios.set('fieldAliases', {'Nombre': 'Nombre', 'Datos': 'Datos', 'Estado': 'Estado', 'CC/Comuna': 'CC/Comuna', 'Fecha': 'Fecha', 'Obra': 'Obra'});
-lyr_Areas_20.set('fieldAliases', {'NAME': 'NAME', 'Estado': 'Estado', 'Obra': 'Obra', 'Datos': 'Datos'});
+
 lyr_Lineas_Obras.set('fieldAliases', {'Nombre': 'Nombre', 'Estado': 'Estado', 'Obra': 'Obra', 'Datos': 'Datos', 'Tipo': 'Tipo'});
 lyr_Puntos_Obras.set('fieldAliases', {'Nombre': 'Nombre', 'Estado': 'Estado', 'Obra': 'Obra', 'Datos': 'Datos', 'Tipo': 'Tipo'});
 
@@ -360,7 +350,7 @@ lyr_Cuencas.set('fieldImages', {'N_CCA': 'TextEdit', 'Area': 'TextEdit', 'Perim'
 lyr_Lineas_Canales_Clandestinos.set('fieldImages', {'Nombre': 'TextEdit','Código': 'TextEdit', 'Tipo': 'TextEdit', 'Localidad': 'TextEdit', 'Dpto': 'TextEdit'});
 lyr_Puntos_Obras_Clandestinas.set('fieldImages', {'Nombre': 'TextEdit','Código': 'TextEdit', 'Tipo': 'TextEdit', 'Localidad': 'TextEdit', 'Dpto': 'TextEdit'});
 
-lyr_CapaBaseTroncales.set('fieldImages', {'Nombre': 'TextEdit', 'Jerarquia': 'TextEdit', 'CAR': 'TextEdit', 'GES': 'TextEdit', 'ACT': 'TextEdit', 'OBS': 'TextEdit',});
+lyr_CapaBaseTroncales.set('fieldImages', {'Nombre': 'TextEdit', 'Jerarquia': 'TextEdit'});
 lyr_Canales_Troncales_licitacion.set('fieldImages', {'Nombre': 'TextEdit', 'Longuitud': 'Range', 'Estado': 'TextEdit', 'Datos': 'TextEdit', 'Zona': 'TextEdit'});
 lyr_PlanesdeObraCC2026Linea.set('fieldImages', {'Nombre': 'TextEdit', 'Estado': 'TextEdit', 'C Cuenca': 'TextEdit', 'Localidad': 'TextEdit', 'Dpto': 'TextEdit'});
 lyr_PlanesdeObraCC2026Punto.set('fieldImages', {'Nombre': 'TextEdit', 'Estado': 'TextEdit', 'C Cuenca': 'TextEdit', 'Localidad': 'TextEdit', 'Dpto': 'TextEdit'});
@@ -372,7 +362,7 @@ lyr_CanalesATN.set('fieldImages', {'Nombre': 'TextEdit', 'Estado': 'TextEdit', '
 lyr_PuntosATN.set('fieldImages', {'Nombre': 'TextEdit', 'Estado': 'TextEdit', 'Ubicacion': 'TextEdit', 'Datos': 'TextEdit'});
 lyr_Lineas_Convenios.set('fieldImages', {'Nombre': 'TextEdit', 'Datos': 'TextEdit', 'Estado': 'TextEdit', 'CC/Comuna': 'TextEdit', 'Fecha': 'TextEdit', 'Obra': 'TextEdit'});
 lyr_Puntos_Convenios.set('fieldImages', {'Nombre': 'TextEdit', 'Datos': 'TextEdit', 'Estado': 'TextEdit', 'CC/Comuna': 'TextEdit', 'Fecha': 'TextEdit', 'Obra': 'TextEdit'});
-lyr_Areas_20.set('fieldImages', {'Nombre': 'TextEdit', 'Estado': 'TextEdit', 'Obra': 'TextEdit', 'Datos': 'TextEdit'});
+
 lyr_Lineas_Obras.set('fieldImages', {'Nombre': 'TextEdit', 'Estado': 'TextEdit', 'Obra': 'TextEdit', 'Datos': 'TextEdit', 'Tipo': 'TextEdit'});
 lyr_Puntos_Obras.set('fieldImages', {'Nombre': 'TextEdit', 'Estado': 'TextEdit', 'Obra': 'TextEdit', 'Datos': 'TextEdit', 'Tipo': 'TextEdit'});
 
@@ -389,7 +379,7 @@ lyr_Cuencas.set('fieldLabels', {'N_CCA': 'header label - visible with data', 'Ar
 lyr_Lineas_Canales_Clandestinos.set('fieldLabels', {'Nombre': 'header label - visible with data','Código': 'header label - visible with data', 'Tipo': 'header label - visible with data', 'Localidad': 'header label - visible with data', 'Dpto': 'header label - visible with data'});
 lyr_Puntos_Obras_Clandestinas.set('fieldLabels', {'Nombre': 'header label - visible with data','Código': 'header label - visible with data', 'Tipo': 'header label - visible with data', 'Localidad': 'header label - visible with data', 'Dpto': 'header label - visible with data'});
 
-lyr_CapaBaseTroncales.set('fieldLabels', {'Nombre': 'header label - visible with data', 'Jerarquia': 'header label - visible with data', 'CAR': 'hidden field', 'GES': 'hidden field', 'ACT': 'inline label - always visible', 'OBS': 'hidden field'});
+lyr_CapaBaseTroncales.set('fieldLabels', {'Nombre': 'header label - visible with data', 'Jerarquia': 'header label - visible with data'});
 lyr_Canales_Troncales_licitacion.set('fieldLabels', {'Nombre': 'inline label - visible with data', 'Longuitud': 'inline label - visible with data', 'Estado': 'inline label - visible with data', 'Datos': 'inline label - visible with data', 'Zona': 'inline label - visible with data'});
 lyr_PlanesdeObraCC2026Linea.set('fieldLabels', {'Nombre': 'inline label - visible with data', 'Estado': 'inline label - visible with data', 'C Cuenca': 'inline label - visible with data', 'Localidad': 'inline label - visible with data', 'Dpto': 'inline label - visible with data'});
 lyr_PlanesdeObraCC2026Punto.set('fieldLabels', {'Nombre': 'inline label - visible with data', 'Estado': 'inline label - visible with data', 'C Cuenca': 'inline label - visible with data', 'Localidad': 'inline label - visible with data', 'Dpto': 'inline label - visible with data'});
@@ -401,7 +391,7 @@ lyr_CanalesATN.set('fieldLabels', {'Ubicacion': 'inline label - visible with dat
 lyr_PuntosATN.set('fieldLabels', {'Ubicacion': 'inline label - visible with data', 'Nombre': 'inline label - visible with data', 'Estado': 'inline label - visible with data', 'Datos': 'inline label - visible with data'});
 lyr_Lineas_Convenios.set('fieldLabels', {'Nombre': 'inline label - visible with data', 'Datos': 'inline label - visible with data', 'Estado': 'inline label - visible with data', 'CC/Comuna': 'inline label - visible with data', 'Fecha': 'inline label - visible with data', 'Obra': 'inline label - visible with data'});
 lyr_Puntos_Convenios.set('fieldLabels', {'Nombre': 'inline label - visible with data', 'Datos': 'inline label - visible with data', 'Estado': 'inline label - visible with data', 'CC/Comuna': 'inline label - visible with data', 'Fecha': 'inline label - visible with data', 'Obra': 'inline label - visible with data'});
-lyr_Areas_20.set('fieldLabels', {'NAME': 'inline label - visible with data', 'Estado': 'inline label - visible with data', 'Obra': 'inline label - visible with data', 'Datos': 'inline label - visible with data'});
+
 lyr_Lineas_Obras.set('fieldLabels', {'Nombre': 'inline label - visible with data', 'Estado': 'inline label - visible with data', 'Obra': 'inline label - visible with data', 'Datos': 'inline label - visible with data', 'Tipo': 'inline label - visible with data'});
 lyr_Puntos_Obras.set('fieldLabels', {'Nombre': 'inline label - visible with data', 'Estado': 'inline label - visible with data', 'Obra': 'inline label - visible with data', 'Datos': 'inline label - visible with data', 'Tipo': 'inline label - visible with data'});
 
